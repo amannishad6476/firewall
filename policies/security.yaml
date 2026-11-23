@@ -1,0 +1,104 @@
+version: "1.0"
+metadata:
+  name: "Default Enterprise AI Firewall Policy"
+  updated_at: "2026-11-21T00:00:00Z"
+  description: "Strict zero-trust security policy for AI agent tool executions and taint isolation."
+
+thresholds:
+  allow_max: 0.30
+  ask_human_max: 0.70
+  block_min: 0.70
+
+domains:
+  allowed:
+    - "api.internal.corp"
+    - "trusted-docs.enterprise.com"
+    - "safe-sandbox.local"
+  blocked:
+    - "attacker.com"
+    - "malicious-payloads.org"
+    - "darkweb-leak.net"
+    - "phishing-link.xyz"
+
+sensitive_operations:
+  - "send_email"
+  - "delete_file"
+  - "execute_sql"
+  - "make_payment"
+  - "modify_database"
+  - "execute_command"
+  - "share_document"
+
+action_severities:
+  read_webpage: 0.20
+  read_file: 0.30
+  search_docs: 0.15
+  send_email: 0.75
+  delete_file: 0.90
+  execute_sql: 0.85
+  execute_command: 0.95
+  make_payment: 0.95
+  modify_database: 0.80
+
+target_trust_ratings:
+  internal_doc: 0.90
+  system_prompt: 1.00
+  user_input: 0.80
+  internal_api: 0.85
+  external_web: 0.15
+  untrusted_storage: 0.10
+  unverified_recipient: 0.10
+  verified_recipient: 0.70
+
+data_sensitivities:
+  public: 0.10
+  internal: 0.40
+  confidential: 0.80
+  restricted_secret: 0.95
+  credentials: 1.00
+  pii: 0.85
+
+mandatory_rules:
+  fail_closed: true
+  block_tainted_sensitive_actions: true
+  require_human_approval_for_data_exfiltration: true
+  block_known_prompt_injection: true
+  scan_nested_base64: true
+  strip_zero_width_unicode: true
+
+agent_permissions:
+  default_agent:
+    allowed_tools:
+      - "read_webpage"
+      - "read_file"
+      - "search_docs"
+    requires_approval_tools:
+      - "send_email"
+      - "execute_sql"
+      - "share_document"
+    prohibited_tools:
+      - "delete_file"
+      - "execute_command"
+  analyst_agent:
+    allowed_tools:
+      - "read_webpage"
+      - "read_file"
+      - "search_docs"
+      - "send_email"
+    requires_approval_tools:
+      - "execute_sql"
+    prohibited_tools:
+      - "delete_file"
+      - "execute_command"
+  admin_agent:
+    allowed_tools:
+      - "read_webpage"
+      - "read_file"
+      - "send_email"
+      - "delete_file"
+      - "execute_sql"
+    requires_approval_tools:
+      - "delete_file"
+      - "execute_sql"
+    prohibited_tools:
+      - "execute_command"

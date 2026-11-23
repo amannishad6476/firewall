@@ -1,0 +1,22 @@
+{
+  "name": "ai-agent-firewall",
+  "version": "1.0.0",
+  "description": "AI Agent Firewall & Security Monitoring Platform",
+  "scripts": {
+    "dev": "python -m streamlit run dashboard/app.py",
+    "dev:frontend": "python -m streamlit run dashboard/app.py",
+    "dev:backend": "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "start": "python -m streamlit run dashboard/app.py",
+    "test": "python -m pytest backend/tests/ -v -s",
+    "demo": "python demo/run_demo.py"
+  },
+  "keywords": [
+    "ai-agent",
+    "firewall",
+    "cybersecurity",
+    "prompt-injection",
+    "security-monitoring"
+  ],
+  "author": "Cybersecurity Engineering Team",
+  "license": "ISC"
+}
