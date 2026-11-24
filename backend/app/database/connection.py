@@ -19,9 +19,29 @@ def get_db():
     finally:
         db.close()
 
+def migrate_db():
+    """Ensures existing tables have all modern security columns."""
+    try:
+        with engine.connect() as conn:
+            cursor = conn.exec_driver_sql("PRAGMA table_info(approval_requests)")
+            cols = [row[1] for row in cursor.fetchall()]
+            if "expires_at" not in cols:
+                conn.exec_driver_sql("ALTER TABLE approval_requests ADD COLUMN expires_at DATETIME")
+
+            cursor = conn.exec_driver_sql("PRAGMA table_info(audit_logs)")
+            cols = [row[1] for row in cursor.fetchall()]
+            if "prev_hash" not in cols:
+                conn.exec_driver_sql("ALTER TABLE audit_logs ADD COLUMN prev_hash VARCHAR(64) DEFAULT 'GENESIS'")
+            if "row_hash" not in cols:
+                conn.exec_driver_sql("ALTER TABLE audit_logs ADD COLUMN row_hash VARCHAR(64)")
+            conn.commit()
+    except Exception:
+        pass
+
 def init_db():
     # Ensure database tables exist
     Base.metadata.create_all(bind=engine)
+    migrate_db()
     
     # Seed default agents and policy if not present
     db = SessionLocal()

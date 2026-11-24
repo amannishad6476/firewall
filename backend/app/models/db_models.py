@@ -85,8 +85,9 @@ class ApprovalRequest(Base):
     threat_category = Column(String(64), nullable=True)
     reason = Column(Text, nullable=False)
     
-    status = Column(String(32), default="PENDING", index=True)  # PENDING, APPROVED, REJECTED, EXPIRED
+    status = Column(String(32), default="PENDING", index=True)  # PENDING, APPROVED, REJECTED, EXPIRED, CONSUMED
     created_at = Column(DateTime, default=get_utc_now, index=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
     resolved_at = Column(DateTime, nullable=True)
     resolved_by = Column(String(64), nullable=True)
     resolution_notes = Column(Text, nullable=True)
@@ -117,6 +118,8 @@ class AuditLog(Base):
     risk_score = Column(Float, nullable=True)
     details = Column(Text, nullable=True)
     ip_address = Column(String(64), default="127.0.0.1")
+    prev_hash = Column(String(64), nullable=True, default="GENESIS")
+    row_hash = Column(String(64), nullable=True, index=True)
 
 # Indexes for fast querying
 Index("ix_security_events_time_decision", SecurityEvent.timestamp, SecurityEvent.decision)

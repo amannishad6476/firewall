@@ -1,7 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from ..models.db_models import ApprovalRequest, SecurityEvent, AuditLog
+from ..config.settings import settings
 
 class ApprovalManager:
     """
@@ -19,8 +20,13 @@ class ApprovalManager:
         parameters_str: str,
         calculated_risk: float,
         threat_category: Optional[str],
-        reason: str
+        reason: str,
+        expires_in_minutes: Optional[int] = None
     ) -> ApprovalRequest:
+        now = datetime.now(timezone.utc)
+        exp_minutes = expires_in_minutes or settings.APPROVAL_EXPIRY_MINUTES
+        expires_at = now + timedelta(minutes=exp_minutes)
+
         approval = ApprovalRequest(
             event_id=event_id,
             agent_id=agent_id,
@@ -30,7 +36,9 @@ class ApprovalManager:
             calculated_risk=calculated_risk,
             threat_category=threat_category,
             reason=reason,
-            status="PENDING"
+            status="PENDING",
+            created_at=now,
+            expires_at=expires_at
         )
         db.add(approval)
         db.commit()
@@ -47,6 +55,15 @@ class ApprovalManager:
         approval = db.query(ApprovalRequest).filter(ApprovalRequest.id == approval_id).first()
         if not approval:
             return {"success": False, "message": f"Approval request '{approval_id}' not found."}
+
+        # Expiry Check
+        now = datetime.now(timezone.utc)
+        if approval.expires_at:
+            exp = approval.expires_at if approval.expires_at.tzinfo else approval.expires_at.replace(tzinfo=timezone.utc)
+            if exp < now and approval.status == "PENDING":
+                approval.status = "EXPIRED"
+                db.commit()
+                return {"success": False, "message": "Approval request has expired and cannot be approved."}
 
         if approval.status != "PENDING":
             return {"success": False, "message": f"Approval request already resolved with status '{approval.status}'."}
@@ -95,6 +112,15 @@ class ApprovalManager:
         approval = db.query(ApprovalRequest).filter(ApprovalRequest.id == approval_id).first()
         if not approval:
             return {"success": False, "message": f"Approval request '{approval_id}' not found."}
+
+        # Expiry Check
+        now = datetime.now(timezone.utc)
+        if approval.expires_at:
+            exp = approval.expires_at if approval.expires_at.tzinfo else approval.expires_at.replace(tzinfo=timezone.utc)
+            if exp < now and approval.status == "PENDING":
+                approval.status = "EXPIRED"
+                db.commit()
+                return {"success": False, "message": "Approval request has expired and cannot be rejected."}
 
         if approval.status != "PENDING":
             return {"success": False, "message": f"Approval request already resolved with status '{approval.status}'."}

@@ -108,6 +108,7 @@ class ApprovalResponse(BaseModel):
     reason: str
     status: str
     created_at: datetime
+    expires_at: Optional[datetime] = None
     resolved_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
     resolution_notes: Optional[str] = None
@@ -151,6 +152,8 @@ class AuditLogResponse(BaseModel):
     risk_score: Optional[float] = None
     details: Optional[str] = None
     ip_address: str
+    prev_hash: Optional[str] = None
+    row_hash: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

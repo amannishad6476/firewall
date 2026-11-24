@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     FAIL_CLOSED: bool = True
     ENVIRONMENT: str = "development"
     SECRET_KEY: str = "dev-secret-key-123456789"
+    ADMIN_API_KEY: str = "dev-firewall-admin-token-2026"
+    APPROVAL_EXPIRY_MINUTES: int = 15
     
     # Risk calculation defaults
     DEFAULT_RISK_THRESHOLD_ALLOW: float = 0.30

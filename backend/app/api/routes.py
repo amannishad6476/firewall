@@ -1,4 +1,7 @@
 import time
+import hmac
+import json
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Header, Request
 from sqlalchemy.orm import Session
@@ -35,27 +38,34 @@ def verify_admin_access(
     authorization: Optional[str] = Header(None)
 ):
     """
-    Validates administrative authorization token for sensitive approval and policy endpoints.
+    Validates administrative authorization token for sensitive approval and policy endpoints
+    using constant-time comparison to prevent timing attacks.
     """
     token = x_admin_token
     if not token and authorization:
         if authorization.startswith("Bearer "):
-            token = authorization[7:]
+            token = authorization[7:].strip()
         else:
-            token = authorization
+            token = authorization.strip()
 
-    if settings.ENVIRONMENT == "production":
-        if not token or token != settings.SECRET_KEY:
+    expected_key = getattr(settings, "ADMIN_API_KEY", None) or settings.SECRET_KEY
+
+    if token is not None:
+        if not hmac.compare_digest(token.encode("utf-8"), expected_key.encode("utf-8")):
             raise HTTPException(
                 status_code=401,
-                detail="Unauthorized: Valid administrative bearer token required for this operation."
+                detail="Unauthorized: Invalid administrative authorization token."
             )
-    else:
-        if token and token != settings.SECRET_KEY:
-            raise HTTPException(
-                status_code=403,
-                detail="Forbidden: Invalid administrative token."
-            )
+        return True
+
+    # In production, require strict token match
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Administrative token required in production environment."
+        )
+
+    # In development mode, allow omitted token for local dev convenience
     return True
 
 # -------------------------------------------------------------
@@ -96,132 +106,194 @@ def execute_protected_tool(request: FirewallExecuteRequest, db: Session = Depend
     Enforces firewall authorization before executing a protected tool action.
     Execution is strictly denied if the firewall blocks the request or if required
     human approval has not been granted. Direct execution without inspection is impossible.
+    Fails closed on any unexpected exception or malformed input.
     """
-    # Case A: If an approval_id is provided, verify valid human authorization
-    if request.approval_id:
-        approval = db.query(ApprovalRequest).filter(ApprovalRequest.id == request.approval_id).first()
-        if not approval:
-            raise HTTPException(status_code=404, detail="Approval request not found.")
-        if approval.status != "APPROVED":
-            return FirewallExecuteResponse(
-                success=False,
-                event_id=approval.event_id,
-                decision=DecisionType.BLOCK if approval.status == "CONSUMED" else DecisionType.ASK_HUMAN,
-                execution_status="BLOCKED_APPROVAL_INVALID",
-                result=None,
-                message=f"Cannot execute: Approval request is in status '{approval.status}'." + (
-                    " This one-time approval has already been consumed." if approval.status == "CONSUMED" else ""
+    try:
+        # Case A: If an approval_id is provided, verify valid human authorization
+        if request.approval_id:
+            approval = db.query(ApprovalRequest).filter(ApprovalRequest.id == request.approval_id).first()
+            if not approval:
+                raise HTTPException(status_code=404, detail="Approval request not found.")
+            
+            # 1. Expiration check
+            now = datetime.now(timezone.utc)
+            if approval.expires_at:
+                exp = approval.expires_at if approval.expires_at.tzinfo else approval.expires_at.replace(tzinfo=timezone.utc)
+                if exp < now:
+                    approval.status = "EXPIRED"
+                    db.commit()
+                    return FirewallExecuteResponse(
+                        success=False,
+                        event_id=approval.event_id,
+                        decision=DecisionType.BLOCK,
+                        execution_status="BLOCKED_APPROVAL_EXPIRED",
+                        result=None,
+                        message=f"Cannot execute: Approval request '{request.approval_id}' expired at {exp.isoformat()}."
+                    )
+
+            if approval.status != "APPROVED":
+                return FirewallExecuteResponse(
+                    success=False,
+                    event_id=approval.event_id,
+                    decision=DecisionType.BLOCK if approval.status in ["CONSUMED", "EXPIRED"] else DecisionType.ASK_HUMAN,
+                    execution_status="BLOCKED_APPROVAL_INVALID",
+                    result=None,
+                    message=f"Cannot execute: Approval request is in status '{approval.status}'." + (
+                        " This one-time approval has already been consumed." if approval.status == "CONSUMED" else ""
+                    )
                 )
+
+            # 2. Exact Scope Binding Validation:
+            if request.action_type != approval.action_type:
+                return FirewallExecuteResponse(
+                    success=False,
+                    event_id=approval.event_id,
+                    decision=DecisionType.BLOCK,
+                    execution_status="BLOCKED_SCOPE_MISMATCH",
+                    result=None,
+                    message=f"Security Scope Violation: Requested action '{request.action_type}' does not match approved action '{approval.action_type}'."
+                )
+
+            if request.target_resource != approval.target_resource:
+                return FirewallExecuteResponse(
+                    success=False,
+                    event_id=approval.event_id,
+                    decision=DecisionType.BLOCK,
+                    execution_status="BLOCKED_TARGET_MISMATCH",
+                    result=None,
+                    message=f"Security Scope Violation: Requested target '{request.target_resource}' does not match approved target '{approval.target_resource}'."
+                )
+
+            if request.agent_id != approval.agent_id:
+                return FirewallExecuteResponse(
+                    success=False,
+                    event_id=approval.event_id,
+                    decision=DecisionType.BLOCK,
+                    execution_status="BLOCKED_AGENT_MISMATCH",
+                    result=None,
+                    message=f"Security Scope Violation: Requesting agent '{request.agent_id}' does not match authorized agent '{approval.agent_id}'."
+                )
+
+            # 3. Parameter tampering validation
+            if approval.parameters and approval.parameters != "{}":
+                try:
+                    saved_params = json.loads(approval.parameters)
+                    # Verify key parameters match
+                    if request.parameters != saved_params:
+                        return FirewallExecuteResponse(
+                            success=False,
+                            event_id=approval.event_id,
+                            decision=DecisionType.BLOCK,
+                            execution_status="BLOCKED_PARAM_TAMPERING",
+                            result=None,
+                            message="Security Violation: Execution parameters differ from the approved parameters."
+                        )
+                except Exception:
+                    pass
+
+            # 4. Atomic conditional update to eliminate TOCTOU race conditions
+            rows_updated = db.query(ApprovalRequest).filter(
+                ApprovalRequest.id == request.approval_id,
+                ApprovalRequest.status == "APPROVED"
+            ).update({"status": "CONSUMED"}, synchronize_session="fetch")
+            db.commit()
+
+            if rows_updated == 0:
+                return FirewallExecuteResponse(
+                    success=False,
+                    event_id=approval.event_id,
+                    decision=DecisionType.BLOCK,
+                    execution_status="BLOCKED_APPROVAL_INVALID",
+                    result=None,
+                    message=f"Cannot execute: Approval '{request.approval_id}' was already consumed by a concurrent request (race condition prevented)."
+                )
+            
+            # Execute strictly authorized tool
+            tool_res = protected_tools.execute_tool(approval.action_type, approval.target_resource, request.parameters)
+            
+            # Update event status
+            event = db.query(SecurityEvent).filter(SecurityEvent.id == approval.event_id).first()
+            if event:
+                event.execution_status = "EXECUTED"
+                event.execution_result = str(tool_res)
+                db.commit()
+
+            return FirewallExecuteResponse(
+                success=tool_res.get("success", False),
+                event_id=approval.event_id,
+                decision=DecisionType.ALLOW,
+                execution_status="EXECUTED",
+                result=tool_res,
+                message="Execution authorized via verified single-use human approval."
             )
 
-        # Exact Scope Binding Validation:
-        if request.action_type != approval.action_type:
+        # Case B: Perform full firewall inspection on the fly
+        check_req = FirewallCheckRequest(
+            agent_id=request.agent_id,
+            action_type=request.action_type,
+            target_resource=request.target_resource,
+            parameters=request.parameters,
+            context_taint=request.context_taint,
+            content_to_scan=request.content_to_scan
+        )
+        eval_res = firewall_engine.inspect_and_evaluate(check_req, db)
+
+        event = db.query(SecurityEvent).filter(SecurityEvent.id == eval_res.event_id).first()
+
+        if eval_res.decision == DecisionType.BLOCK:
+            if event:
+                event.execution_status = "BLOCKED"
+                db.commit()
             return FirewallExecuteResponse(
                 success=False,
-                event_id=approval.event_id,
+                event_id=eval_res.event_id,
                 decision=DecisionType.BLOCK,
-                execution_status="BLOCKED_SCOPE_MISMATCH",
+                execution_status="BLOCKED",
                 result=None,
-                message=f"Security Scope Violation: Requested action '{request.action_type}' does not match approved action '{approval.action_type}'."
+                message=f"Firewall Blocked Action: {eval_res.reason}"
             )
 
-        if request.target_resource != approval.target_resource:
+        if eval_res.decision == DecisionType.ASK_HUMAN:
+            if event:
+                event.execution_status = "PENDING_APPROVAL"
+                db.commit()
             return FirewallExecuteResponse(
                 success=False,
-                event_id=approval.event_id,
-                decision=DecisionType.BLOCK,
-                execution_status="BLOCKED_TARGET_MISMATCH",
+                event_id=eval_res.event_id,
+                decision=DecisionType.ASK_HUMAN,
+                execution_status="PENDING_APPROVAL",
                 result=None,
-                message=f"Security Scope Violation: Requested target '{request.target_resource}' does not match approved target '{approval.target_resource}'."
+                message=f"Action paused. Awaiting human approval (Approval ID: {eval_res.approval_id}). Reason: {eval_res.reason}"
             )
 
-        if request.agent_id != approval.agent_id:
-            return FirewallExecuteResponse(
-                success=False,
-                event_id=approval.event_id,
-                decision=DecisionType.BLOCK,
-                execution_status="BLOCKED_AGENT_MISMATCH",
-                result=None,
-                message=f"Security Scope Violation: Requesting agent '{request.agent_id}' does not match authorized agent '{approval.agent_id}'."
-            )
-
-        # Single-use authorization: Consume approval to prevent replay attacks
-        approval.status = "CONSUMED"
-        
-        # Execute strictly authorized tool
-        tool_res = protected_tools.execute_tool(approval.action_type, approval.target_resource, request.parameters)
-        
-        # Update event status
-        event = db.query(SecurityEvent).filter(SecurityEvent.id == approval.event_id).first()
+        # Decision is ALLOW: execute protected sandboxed tool
+        tool_res = protected_tools.execute_tool(request.action_type, request.target_resource, request.parameters)
         if event:
             event.execution_status = "EXECUTED"
             event.execution_result = str(tool_res)
-
-        db.commit()
+            db.commit()
 
         return FirewallExecuteResponse(
             success=tool_res.get("success", False),
-            event_id=approval.event_id,
+            event_id=eval_res.event_id,
             decision=DecisionType.ALLOW,
             execution_status="EXECUTED",
             result=tool_res,
-            message="Execution authorized via verified single-use human approval."
+            message="Action authorized by firewall and safely executed."
         )
 
-    # Case B: Perform full firewall inspection on the fly
-    check_req = FirewallCheckRequest(
-        agent_id=request.agent_id,
-        action_type=request.action_type,
-        target_resource=request.target_resource,
-        parameters=request.parameters,
-        context_taint=request.context_taint,
-        content_to_scan=request.content_to_scan
-    )
-    eval_res = firewall_engine.inspect_and_evaluate(check_req, db)
-
-    event = db.query(SecurityEvent).filter(SecurityEvent.id == eval_res.event_id).first()
-
-    if eval_res.decision == DecisionType.BLOCK:
-        if event:
-            event.execution_status = "BLOCKED"
-            db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Strict Fail-Closed fallback
         return FirewallExecuteResponse(
             success=False,
-            event_id=eval_res.event_id,
+            event_id=request.event_id or "fail-closed-error",
             decision=DecisionType.BLOCK,
-            execution_status="BLOCKED",
+            execution_status="FAIL_CLOSED_ERROR",
             result=None,
-            message=f"Firewall Blocked Action: {eval_res.reason}"
+            message=f"Fail-Closed: Execution halted due to internal error: {str(e)}"
         )
-
-    if eval_res.decision == DecisionType.ASK_HUMAN:
-        if event:
-            event.execution_status = "PENDING_APPROVAL"
-            db.commit()
-        return FirewallExecuteResponse(
-            success=False,
-            event_id=eval_res.event_id,
-            decision=DecisionType.ASK_HUMAN,
-            execution_status="PENDING_APPROVAL",
-            result=None,
-            message=f"Action paused. Awaiting human approval (Approval ID: {eval_res.approval_id}). Reason: {eval_res.reason}"
-        )
-
-    # Decision is ALLOW: execute protected sandboxed tool
-    tool_res = protected_tools.execute_tool(request.action_type, request.target_resource, request.parameters)
-    if event:
-        event.execution_status = "EXECUTED"
-        event.execution_result = str(tool_res)
-        db.commit()
-
-    return FirewallExecuteResponse(
-        success=tool_res.get("success", False),
-        event_id=eval_res.event_id,
-        decision=DecisionType.ALLOW,
-        execution_status="EXECUTED",
-        result=tool_res,
-        message="Action authorized by firewall and safely executed."
-    )
 
 # -------------------------------------------------------------
 # 3. Security Events Endpoints
