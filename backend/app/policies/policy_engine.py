@@ -133,6 +133,15 @@ class PolicyEngine:
             }
 
         requires_approval = action_type in agent_perms.get("requires_approval_tools", [])
+        allowed_tools = agent_perms.get("allowed_tools", [])
+
+        # Zero-trust policy: tool must be recognized in allowed_tools or requires_approval_tools
+        if allowed_tools and (action_type not in allowed_tools) and not requires_approval:
+            return {
+                "allowed": False,
+                "reason": f"Tool '{action_type}' is unlisted/unauthorized for agent '{agent_id}' under zero-trust policy."
+            }
+
         return {
             "allowed": True,
             "requires_approval": requires_approval,

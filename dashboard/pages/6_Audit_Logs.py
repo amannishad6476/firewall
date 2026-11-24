@@ -11,6 +11,18 @@ render_soc_header(
     subtitle="Full provenance trail of agent actions, decisions, risk evaluations, and human approvals."
 )
 
+# Cryptographic chain verification widget
+c_verify, c_status = st.columns([1, 3])
+with c_verify:
+    if st.button("🔐 Verify SHA-256 Hash Chain", use_container_width=True):
+        chain_res = dashboard_service.verify_audit_chain()
+        if chain_res.get("valid"):
+            st.success(f"✅ Cryptographically Verified: {chain_res.get('details')}")
+            if chain_res.get("head_hash"):
+                st.caption(f"Head Block Hash: `{chain_res.get('head_hash')}`")
+        else:
+            st.error(f"❌ TAMPERING DETECTED: {chain_res.get('details')}")
+
 col_s, col_limit = st.columns([4, 1])
 with col_s:
     search_term = st.text_input("🔍 Search audit records by actor, event type, or keyword:", value="")

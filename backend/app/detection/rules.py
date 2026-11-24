@@ -5,11 +5,14 @@ from typing import Dict, Any, List
 CSS_HIDDEN_PATTERNS = [
     (r"display\s*:\s*none", "CSS display:none hiding text"),
     (r"visibility\s*:\s*hidden", "CSS visibility:hidden hiding text"),
-    (r"font-size\s*:\s*(?:0(?:px|em|rem|pt)?|0\.[0-9]+(?:px|em|rem|pt)?)", "CSS near-zero font size hiding text"),
+    (r"font-size\s*:\s*(?:0(?:px|em|rem|pt)?|0\.[0-9]+(?:px|em|rem|pt)?|1px)", "CSS near-zero font size hiding text"),
     (r"color\s*:\s*(?:#ffffff|white|rgba?\(\s*255\s*,\s*255\s*,\s*255\s*(?:,\s*1(?:\.0)?)?\s*\)|transparent)", "CSS white/transparent text (potential white-on-white)"),
     (r"opacity\s*:\s*0(?:\.0+)?(?:\s*;|\s*\}|\s*$)", "CSS opacity:0 making text invisible"),
+    (r"filter\s*:\s*opacity\(\s*0(?:\.0+)?\s*\)", "CSS filter opacity:0 hiding element"),
     (r"text-indent\s*:\s*-[0-9]{3,}px", "CSS extreme negative text-indent (off-screen injection)"),
     (r"(?:position\s*:\s*absolute|fixed)[^;}]*?(?:left|top)\s*:\s*-[0-9]{3,}px", "CSS absolute off-screen positioning"),
+    (r"clip\s*:\s*rect\(\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*\)", "CSS clip rect zeroing element"),
+    (r"transform\s*:\s*scale\(\s*0(?:\.0+)?\s*\)", "CSS transform scale(0) shrinking text to invisible"),
     (r"<[a-zA-Z0-9]+[^>]*\bhidden\b[^>]*>", "HTML hidden attribute concealing text"),
     (r"aria-hidden\s*=\s*['\"]true['\"]", "ARIA hidden element concealing instructions"),
 ]

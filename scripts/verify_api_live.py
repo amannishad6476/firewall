@@ -91,9 +91,14 @@ def run_live_api_audit():
         status, data = req("/api/v1/approvals?status_filter=PENDING")
         results["GET /api/v1/approvals"] = {"status": status, "pending_count": len(data) if isinstance(data, list) else 0}
 
-        # 7. Approve
+        # 7. Approve (Authenticated with X-Admin-Token)
         if approval_id:
-            status, data = req(f"/api/v1/approvals/{approval_id}/approve", "POST", {"reviewer": "sec_officer", "notes": "Approved for live audit"})
+            status, data = req(
+                f"/api/v1/approvals/{approval_id}/approve",
+                "POST",
+                {"reviewer": "sec_officer", "notes": "Approved for live audit"},
+                headers={"X-Admin-Token": "dev-firewall-admin-token-2026"}
+            )
             results["POST /api/v1/approvals/{id}/approve"] = {"status": status, "resolved_status": data.get("status")}
 
         # 8. Statistics
@@ -116,6 +121,53 @@ def run_live_api_audit():
         status, data = req("/api/v1/audit-logs?limit=5")
         results["GET /api/v1/audit-logs"] = {"status": status, "logs_returned": len(data) if isinstance(data, list) else 0}
 
+        # 13. Audit Log SHA-256 Chain Verification
+        status, data = req("/api/v1/audit-logs/verify")
+        results["GET /api/v1/audit-logs/verify"] = {"status": status, "chain_valid": data.get("valid"), "records": data.get("total_records")}
+
+        # -------------------------------------------------------------
+        # NEGATIVE / ERROR OUTCOME VERIFICATIONS (401, 404, 422)
+        # -------------------------------------------------------------
+        # Negative 1: Missing Admin Token on approval mutation (Must be 401)
+        neg_status, neg_data = req(
+            f"/api/v1/approvals/test-approval-id/approve",
+            "POST",
+            {"reviewer": "unauthorized_user", "notes": "No token provided"}
+        )
+        negative_results = {}
+        negative_results["POST /approvals/{id}/approve (MISSING_AUTH)"] = {"status": neg_status, "expected": 401, "detail": neg_data.get("detail")}
+
+        # Negative 2: Invalid Admin Token (Must be 401)
+        neg_status_invalid, neg_data_invalid = req(
+            f"/api/v1/approvals/test-approval-id/approve",
+            "POST",
+            {"reviewer": "attacker", "notes": "Forged token"},
+            headers={"X-Admin-Token": "bad-token-xyz"}
+        )
+        negative_results["POST /approvals/{id}/approve (INVALID_AUTH)"] = {"status": neg_status_invalid, "expected": 401, "detail": neg_data_invalid.get("detail")}
+
+        # Negative 3: Execute with Non-existent Approval ID (Must be 404)
+        neg_status_404, neg_data_404 = req(
+            "/api/v1/firewall/execute",
+            "POST",
+            {
+                "approval_id": "non-existent-uuid-9999",
+                "agent_id": "default_agent",
+                "action_type": "send_email",
+                "target_resource": "test@corp.internal",
+                "parameters": {}
+            }
+        )
+        negative_results["POST /firewall/execute (NON_EXISTENT_APPROVAL)"] = {"status": neg_status_404, "expected": 404, "detail": neg_data_404.get("detail")}
+
+        # Negative 4: Malformed Schema Payload (Must be 422 Unprocessable Entity)
+        neg_status_422, neg_data_422 = req(
+            "/api/v1/firewall/check",
+            "POST",
+            {"unrecognized_field_only": True}
+        )
+        negative_results["POST /firewall/check (MALFORMED_PAYLOAD)"] = {"status": neg_status_422, "expected": 422}
+
     finally:
         proc.terminate()
         try:
@@ -123,11 +175,17 @@ def run_live_api_audit():
         except Exception:
             proc.kill()
 
-    print("\n================== LIVE API AUDIT RESULTS ==================")
+    print("\n================== LIVE API POSITIVE RESULTS (200 OK) ==================")
     print(json.dumps(results, indent=2))
     all_ok = all(v["status"] == 200 for v in results.values())
     print(f"\nAll endpoints HTTP 200 OK: {all_ok}")
     assert all_ok
+
+    print("\n================== LIVE API NEGATIVE / ERROR OUTCOMES (401, 404, 422) ==================")
+    print(json.dumps(negative_results, indent=2))
+    neg_ok = all(v["status"] == v["expected"] for v in negative_results.values())
+    print(f"\nAll negative error conditions verified: {neg_ok}")
+    assert neg_ok
 
 if __name__ == "__main__":
     run_live_api_audit()

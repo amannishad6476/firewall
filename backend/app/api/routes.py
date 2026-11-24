@@ -41,8 +41,10 @@ def verify_admin_access(
     Validates administrative authorization token for sensitive approval and policy endpoints
     using constant-time comparison to prevent timing attacks.
     """
-    token = x_admin_token
-    if not token and authorization:
+    token = None
+    if isinstance(x_admin_token, str) and x_admin_token.strip():
+        token = x_admin_token.strip()
+    elif isinstance(authorization, str) and authorization.strip():
         if authorization.startswith("Bearer "):
             token = authorization[7:].strip()
         else:
@@ -50,22 +52,18 @@ def verify_admin_access(
 
     expected_key = getattr(settings, "ADMIN_API_KEY", None) or settings.SECRET_KEY
 
-    if token is not None:
-        if not hmac.compare_digest(token.encode("utf-8"), expected_key.encode("utf-8")):
-            raise HTTPException(
-                status_code=401,
-                detail="Unauthorized: Invalid administrative authorization token."
-            )
-        return True
-
-    # In production, require strict token match
-    if settings.ENVIRONMENT == "production":
+    if not token:
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Administrative token required in production environment."
+            detail="Unauthorized: Missing administrative authorization token (X-Admin-Token or Bearer Authorization required)."
         )
 
-    # In development mode, allow omitted token for local dev convenience
+    if not hmac.compare_digest(token.encode("utf-8"), expected_key.encode("utf-8")):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid administrative authorization token."
+        )
+
     return True
 
 # -------------------------------------------------------------
@@ -498,6 +496,13 @@ def register_agent(
 # -------------------------------------------------------------
 # 8. Audit Logs Endpoint
 # -------------------------------------------------------------
+@router.get("/audit-logs/verify", tags=["Audit"])
+def verify_audit_log_chain(db: Session = Depends(get_db)):
+    """
+    Cryptographically verifies the SHA-256 hash chain of the audit log to prove tamper-evidence.
+    """
+    return audit_logger.verify_chain(db)
+
 @router.get("/audit-logs", response_model=List[AuditLogResponse], tags=["Audit"])
 def get_audit_logs(
     agent_id: Optional[str] = None,

@@ -12,6 +12,7 @@ from backend.app.models.db_models import Agent, SecurityEvent, ApprovalRequest, 
 from backend.app.policies.policy_engine import policy_engine
 from backend.app.approvals.manager import approval_manager
 from backend.app.firewall.engine import firewall_engine
+from backend.app.logging.audit_logger import audit_logger
 from backend.app.schemas.firewall_schemas import FirewallCheckRequest, ContextTaintInfo, OriginType
 
 API_BASE_URL = os.getenv("FIREWALL_API_URL", "http://127.0.0.1:8000/api/v1")
@@ -153,6 +154,13 @@ class SecurityDashboardService:
                     "details": l.details or ""
                 })
             return res
+        finally:
+            db.close()
+
+    def verify_audit_chain(self) -> Dict[str, Any]:
+        db = self.get_db()
+        try:
+            return audit_logger.verify_chain(db)
         finally:
             db.close()
 
