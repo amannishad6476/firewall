@@ -1,6 +1,6 @@
 import streamlit as st
 import yaml
-from dashboard.components.theme import apply_cyber_theme, render_soc_header
+from dashboard.components.theme import apply_cyber_theme, render_soc_header, get_current_theme
 from dashboard.services.api_client import dashboard_service
 from backend.app.policies.policy_engine import policy_engine
 
@@ -16,6 +16,25 @@ render_soc_header(
     title="Declarative Security Policy Governance",
     subtitle="Manage risk thresholds, domain boundaries, prohibited actions, and agent roles."
 )
+
+# Robust JS injection to ensure spellcheck attribute is disabled on textarea DOM elements
+st.markdown("""
+<script>
+    function disableSpellcheck() {
+        const textareas = document.querySelectorAll('textarea');
+        textareas.forEach(el => {
+            el.setAttribute('spellcheck', 'false');
+            el.setAttribute('autocomplete', 'off');
+            el.setAttribute('autocorrect', 'off');
+            el.setAttribute('autocapitalize', 'off');
+        });
+    }
+    disableSpellcheck();
+    window.addEventListener('DOMContentLoaded', disableSpellcheck);
+    const observer = new MutationObserver(disableSpellcheck);
+    observer.observe(document.body, { childList: true, subtree: true });
+</script>
+""", unsafe_allow_html=True)
 
 current_yaml = dashboard_service.get_policy_yaml()
 

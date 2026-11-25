@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from dashboard.components.theme import apply_cyber_theme, render_soc_header
+from dashboard.components.theme import apply_cyber_theme, render_soc_header, get_current_theme
 from dashboard.services.api_client import dashboard_service
 
 st.set_page_config(
@@ -26,23 +26,23 @@ else:
     for req in pending:
         with st.container():
             st.markdown(f"""
-            <div style="background: #111827; border: 1px solid #374151; border-radius: 8px; padding: 18px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 1.1rem; font-weight: 700; color: #f9fafb;">Operation: <code>{req['action_type']}</code> &rarr; <code>{req['target_resource']}</code></span>
-                    <span style="background-color: #78350f; color: #fde68a; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 0.85rem;">RISK: {req['calculated_risk']:.2f}</span>
+            <div class="approval-card">
+                <div class="approval-card-header">
+                    <span class="approval-op-title">Operation: <code>{req['action_type']}</code> &rarr; <code>{req['target_resource']}</code></span>
+                    <span class="badge-human">RISK: {req['calculated_risk']:.2f}</span>
                 </div>
-                <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;">
+                <div class="approval-meta">
                     Approval ID: <code>{req['id']}</code> | Agent: <code>{req['agent_id']}</code> | Time: {req['created_at']} | Category: <b>{req['threat_category']}</b>
                 </div>
-                <div style="margin-top: 10px; font-size: 0.9rem; color: #e5e7eb;">
+                <div class="approval-reason">
                     <b>Trigger Reason</b>: {req['reason']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            c_act1, c_act2, c_spacer = st.columns([1, 1, 4])
+            c_act1, c_act2, c_spacer = st.columns([1.2, 1.2, 3.6])
             with c_act1:
-                if st.button("✅ Approve Action", key=f"app_{req['id']}", use_container_width=True):
+                if st.button("✅ Approve Action", key=f"app_{req['id']}", use_container_width=True, type="primary"):
                     res = dashboard_service.approve_request(req['id'])
                     if res["success"]:
                         st.success(f"Operation {req['id'][:8]} APPROVED.")

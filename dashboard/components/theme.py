@@ -51,26 +51,59 @@ CYBER_DARK_CSS = """
     }
 
     /* Top navbar page links/buttons styling - Dark */
+    .top-navbar-wrapper [data-testid="stPageLink"],
+    .top-navbar-wrapper [data-testid="stPageLink"] a,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] {
         background-color: #1f2937 !important;
         border: 1px solid #374151 !important;
-        color: #cbd5e1 !important;
         border-radius: 6px !important;
         font-size: 0.82rem !important;
         font-weight: 500 !important;
         transition: all 0.15s ease-in-out !important;
     }
+    .top-navbar-wrapper [data-testid="stPageLink"] p,
+    .top-navbar-wrapper [data-testid="stPageLink"] span,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] span {
+        color: #cbd5e1 !important;
+    }
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover,
+    .top-navbar-wrapper [data-testid="stPageLink"] a:hover,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover {
         background-color: #312e81 !important;
         border-color: #4f46e5 !important;
+    }
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover p,
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover span,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover span {
         color: #ffffff !important;
     }
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] {
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"],
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] {
         background-color: #4338ca !important;
         border-color: #6366f1 !important;
+        box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
+    }
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] span,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] p,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] span {
         color: #ffffff !important;
         font-weight: 700 !important;
-        box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
+    }
+
+    /* Top navbar theme toggle button - Dark */
+    .top-navbar-wrapper .stButton > button {
+        background-color: #1f2937 !important;
+        color: #f8fafc !important;
+        border: 1px solid #374151 !important;
+        font-weight: 600 !important;
+    }
+    .top-navbar-wrapper .stButton > button:hover {
+        background-color: #312e81 !important;
+        border-color: #6366f1 !important;
+        color: #ffffff !important;
     }
 
     /* Top header badge */
@@ -120,11 +153,79 @@ CYBER_DARK_CSS = """
         letter-spacing: 0.05em;
     }
 
-    /* Suppress spellcheck squiggles on YAML/code editors */
-    textarea {
+    /* Dark Mode Textarea / Editor High Contrast */
+    textarea,
+    .stTextArea textarea,
+    [data-baseweb="textarea"] textarea {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border: 1px solid #334155 !important;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+        font-size: 0.88rem !important;
+        line-height: 1.5 !important;
+        border-radius: 6px !important;
         spellcheck: false;
         -webkit-spell-check: false;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    }
+    textarea:focus,
+    .stTextArea textarea:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 1px #6366f1 !important;
+    }
+
+    /* Tabs Styling - Dark Mode */
+    [data-baseweb="tab-list"] {
+        border-bottom: 1px solid #1f2937 !important;
+    }
+    [data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-weight: 500 !important;
+    }
+    [data-baseweb="tab"][aria-selected="true"] {
+        color: #818cf8 !important;
+        border-bottom-color: #6366f1 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Approval Card styles - Dark Mode */
+    .approval-card {
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 8px;
+        padding: 18px;
+        margin-bottom: 16px;
+    }
+    .approval-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .approval-op-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #f9fafb;
+    }
+    .approval-op-title code {
+        background-color: #1f2937;
+        color: #a5b4fc;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .approval-meta {
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+    .approval-meta code {
+        background-color: #1f2937;
+        color: #e2e8f0;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .approval-reason {
+        margin-top: 10px;
+        font-size: 0.9rem;
+        color: #e5e7eb;
     }
 
     /* Badges */
@@ -172,26 +273,60 @@ CYBER_LIGHT_CSS = """
     }
 
     /* Top navbar page links/buttons styling - Light */
+    .top-navbar-wrapper [data-testid="stPageLink"],
+    .top-navbar-wrapper [data-testid="stPageLink"] a,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] {
         background-color: #f1f5f9 !important;
         border: 1px solid #cbd5e1 !important;
-        color: #334155 !important;
         border-radius: 6px !important;
         font-size: 0.82rem !important;
-        font-weight: 500 !important;
+        font-weight: 600 !important;
         transition: all 0.15s ease-in-out !important;
     }
+    .top-navbar-wrapper [data-testid="stPageLink"] p,
+    .top-navbar-wrapper [data-testid="stPageLink"] span,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] span {
+        color: #0f172a !important;
+        font-weight: 600 !important;
+    }
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover,
+    .top-navbar-wrapper [data-testid="stPageLink"] a:hover,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover {
         background-color: #e2e8f0 !important;
-        border-color: #94a3b8 !important;
-        color: #0f172a !important;
+        border-color: #6366f1 !important;
     }
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] {
-        background-color: #4f46e5 !important;
-        border-color: #4338ca !important;
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover p,
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover span,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover span {
+        color: #4338ca !important;
+    }
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"],
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] {
+        background-color: #4338ca !important;
+        border-color: #3730a3 !important;
+        box-shadow: 0 0 8px rgba(67, 56, 202, 0.3) !important;
+    }
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] p,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] span,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] p,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] span {
         color: #ffffff !important;
         font-weight: 700 !important;
-        box-shadow: 0 0 8px rgba(79, 70, 229, 0.3) !important;
+    }
+
+    /* Top navbar theme toggle button - Light */
+    .top-navbar-wrapper .stButton > button {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        font-weight: 600 !important;
+    }
+    .top-navbar-wrapper .stButton > button:hover {
+        background-color: #e2e8f0 !important;
+        border-color: #4f46e5 !important;
+        color: #4338ca !important;
     }
 
     /* Top header badge */
@@ -242,6 +377,50 @@ CYBER_LIGHT_CSS = """
         letter-spacing: 0.05em;
     }
 
+    /* Approval Card styles - Light Mode */
+    .approval-card {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 18px !important;
+        margin-bottom: 16px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+    }
+    .approval-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .approval-op-title {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+    }
+    .approval-op-title code {
+        background-color: #f1f5f9 !important;
+        color: #3730a3 !important;
+        border: 1px solid #e2e8f0 !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+    }
+    .approval-meta {
+        margin-top: 8px !important;
+        font-size: 0.85rem !important;
+        color: #475569 !important;
+    }
+    .approval-meta code {
+        background-color: #f1f5f9 !important;
+        color: #1e293b !important;
+        border: 1px solid #e2e8f0 !important;
+        padding: 2px 6px !important;
+        border-radius: 4px !important;
+    }
+    .approval-reason {
+        margin-top: 10px !important;
+        font-size: 0.9rem !important;
+        color: #1e293b !important;
+    }
+
     /* Card surface adjustment for light mode */
     div[style*="background: #111827"] {
         background: #ffffff !important;
@@ -260,11 +439,75 @@ CYBER_LIGHT_CSS = """
         background-color: #f1f5f9 !important;
     }
 
-    /* Suppress spellcheck squiggles on YAML/code editors */
-    textarea {
+    /* Light Mode Textarea / YAML Editor - Crisp Light Surface with Dark High-Contrast Text */
+    textarea,
+    .stTextArea textarea,
+    [data-baseweb="textarea"] textarea {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+        font-size: 0.88rem !important;
+        line-height: 1.5 !important;
+        border-radius: 6px !important;
         spellcheck: false;
         -webkit-spell-check: false;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    textarea:focus,
+    .stTextArea textarea:focus {
+        border-color: #4f46e5 !important;
+        box-shadow: 0 0 0 1px #4f46e5 !important;
+    }
+
+    /* Tabs Styling - Light Mode */
+    [data-baseweb="tab-list"] {
+        border-bottom: 1px solid #cbd5e1 !important;
+    }
+    [data-baseweb="tab"] {
+        color: #475569 !important;
+        font-weight: 500 !important;
+    }
+    [data-baseweb="tab"]:hover {
+        color: #0f172a !important;
+    }
+    [data-baseweb="tab"][aria-selected="true"] {
+        color: #4338ca !important;
+        border-bottom-color: #4f46e5 !important;
+        font-weight: 700 !important;
+    }
+
+    /* Buttons in Light Mode */
+    .stButton > button {
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+        background-color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+    .stButton > button:hover {
+        border-color: #4f46e5 !important;
+        color: #4338ca !important;
+        background-color: #f1f5f9 !important;
+    }
+    
+    /* Primary buttons (e.g. Approve Action) in Light Mode */
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background-color: #059669 !important;
+        border-color: #047857 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
+        background-color: #047857 !important;
+        border-color: #065f46 !important;
+        color: #ffffff !important;
+    }
+    
+    .stButton > button:active {
+        background-color: #4f46e5 !important;
+        color: #ffffff !important;
     }
 
     /* Badges */
