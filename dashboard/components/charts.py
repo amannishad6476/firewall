@@ -10,10 +10,13 @@ def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Fi
     fig = go.Figure(data=[go.Pie(
         labels=labels,
         values=values,
-        hole=0.55,
+        hole=0.58,
         marker=dict(colors=colors, line=dict(color='#0b0f19', width=2)),
-        textinfo='label+percent',
-        insidetextorientation='radial'
+        textinfo='percent',
+        textposition='inside',
+        insidetextorientation='horizontal',
+        textfont=dict(color='#ffffff', size=13, family='sans-serif'),
+        hovertemplate="<b>%{label}</b>: %{value} actions (%{percent})<extra></extra>"
     )])
 
     fig.update_layout(
@@ -21,10 +24,18 @@ def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Fi
         title_font=dict(color="#f8fafc", size=15),
         paper_bgcolor="#111827",
         plot_bgcolor="#111827",
-        font=dict(color="#94a3b8"),
+        font=dict(color="#cbd5e1"),
         showlegend=True,
-        margin=dict(t=40, b=20, l=20, r=20),
-        height=280
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.22,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color="#cbd5e1")
+        ),
+        margin=dict(t=40, b=50, l=20, r=20),
+        height=290
     )
     return fig
 
@@ -46,11 +57,11 @@ def create_risk_distribution_chart(events: List[Dict[str, Any]]) -> go.Figure:
         title_font=dict(color="#f8fafc", size=15),
         paper_bgcolor="#111827",
         plot_bgcolor="#111827",
-        font=dict(color="#94a3b8"),
-        xaxis=dict(title="Normalized Risk Score", gridcolor="#1f2937", range=[0, 1]),
-        yaxis=dict(title="Frequency", gridcolor="#1f2937"),
-        margin=dict(t=40, b=40, l=40, r=20),
-        height=280
+        font=dict(color="#cbd5e1"),
+        xaxis=dict(title="Normalized Risk Score", gridcolor="#1f2937", range=[0, 1], title_font=dict(color="#94a3b8")),
+        yaxis=dict(title="Frequency", gridcolor="#1f2937", title_font=dict(color="#94a3b8")),
+        margin=dict(t=40, b=50, l=40, r=20),
+        height=290
     )
     return fig
 
@@ -75,10 +86,10 @@ def create_action_bar_chart(events: List[Dict[str, Any]]) -> go.Figure:
         title_font=dict(color="#f8fafc", size=15),
         paper_bgcolor="#111827",
         plot_bgcolor="#111827",
-        font=dict(color="#94a3b8"),
+        font=dict(color="#cbd5e1"),
         xaxis=dict(gridcolor="#1f2937"),
-        yaxis=dict(title="Invocations", gridcolor="#1f2937"),
-        margin=dict(t=40, b=40, l=40, r=20),
-        height=280
+        yaxis=dict(title="Invocations", gridcolor="#1f2937", title_font=dict(color="#94a3b8")),
+        margin=dict(t=40, b=50, l=40, r=20),
+        height=290
     )
     return fig

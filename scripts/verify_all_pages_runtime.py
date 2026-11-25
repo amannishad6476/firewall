@@ -21,10 +21,20 @@ def test_pages_runtime():
         print(f"    Events in DB: {total_events}, Approvals: {total_approvals}, Audit Logs: {total_audit}")
         
         # Page 1 Check
-        print(">>> 2. Verifying Page 1 (Security Overview) Data Queries...")
+        print(">>> 2. Verifying Page 1 (Security Overview) Data Queries & Charts...")
         stats = dashboard_service.get_statistics()
         assert stats["total_inspections"] == total_events
-        print("    Page 1 stats query succeeded:", stats)
+        recent_events = dashboard_service.get_recent_events(limit=50)
+        from dashboard.components.charts import (
+            create_decision_pie_chart,
+            create_risk_distribution_chart,
+            create_action_bar_chart
+        )
+        pie_fig = create_decision_pie_chart(stats["allowed_actions"], stats["blocked_threats"], stats["pending_approvals"])
+        risk_fig = create_risk_distribution_chart(recent_events)
+        bar_fig = create_action_bar_chart(recent_events)
+        assert pie_fig is not None and risk_fig is not None and bar_fig is not None
+        print("    Page 1 stats query and all 3 Plotly charts created successfully:", stats)
         
         # Page 2 Check
         print(">>> 3. Verifying Page 2 (Live Monitor) Simulation...")

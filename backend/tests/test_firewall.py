@@ -93,3 +93,29 @@ def test_firewall_fail_closed_for_disabled_agent(test_db):
     res = firewall_engine.inspect_and_evaluate(req, test_db)
     assert res.decision == DecisionType.BLOCK
     assert "Fail-Closed" in res.reason or "invalid" in res.reason
+
+def test_firewall_prohibited_tool_for_agent_role(test_db):
+    # default_agent has delete_file in prohibited_tools
+    req = FirewallCheckRequest(
+        agent_id="default_agent",
+        action_type="delete_file",
+        target_resource="temp_cache.log",
+        parameters={},
+        context_taint=ContextTaintInfo(source=OriginType.USER, is_tainted=False, original_user_goal="Delete temp file")
+    )
+    res = firewall_engine.inspect_and_evaluate(req, test_db)
+    assert res.decision == DecisionType.BLOCK
+    assert "prohibited" in res.reason.lower() or "not authorized" in res.reason.lower()
+
+def test_firewall_unlisted_tool_zero_trust_blocked(test_db):
+    # unknown_tool is neither in allowed_tools nor requires_approval_tools
+    req = FirewallCheckRequest(
+        agent_id="default_agent",
+        action_type="unlisted_arbitrary_tool",
+        target_resource="kernel_module",
+        parameters={},
+        context_taint=ContextTaintInfo(source=OriginType.USER, is_tainted=False)
+    )
+    res = firewall_engine.inspect_and_evaluate(req, test_db)
+    assert res.decision == DecisionType.BLOCK
+    assert "zero-trust" in res.reason.lower() or "not authorized" in res.reason.lower()

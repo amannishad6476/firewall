@@ -18,6 +18,25 @@ tab_edit, tab_view = st.tabs(["✏️ Edit YAML Policy", "🔍 Structured View"]
 
 with tab_edit:
     st.markdown("Modify security rules in declarative YAML format. All updates undergo structural schema validation before persisting.")
+    
+    st.markdown("""
+    <style>
+        /* YAML Code Editor: High contrast, dark code background, no spellcheck squiggles */
+        .stTextArea textarea {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace !important;
+            font-size: 0.92rem !important;
+            line-height: 1.55 !important;
+            background-color: #0d1117 !important;
+            color: #e6edf3 !important;
+            border: 1px solid #30363d !important;
+            border-radius: 6px !important;
+            spellcheck: false !important;
+            -webkit-spell-check: false !important;
+            white-space: pre !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     edited_yaml = st.text_area("Policy Configuration (YAML)", value=current_yaml, height=450)
     
     col_save, col_reset = st.columns([1, 4])
