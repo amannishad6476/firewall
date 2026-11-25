@@ -38,8 +38,24 @@ logs = dashboard_service.get_audit_logs(limit=record_limit, search=search_term i
 
 if logs:
     df_logs = pd.DataFrame(logs)
+    
+    # Priority ordered columns with defensive filtering so missing columns never cause KeyError
+    desired_columns = [
+        "timestamp",
+        "event_type",
+        "actor",
+        "agent_id",
+        "action_summary",
+        "decision",
+        "risk_score",
+        "prev_hash",
+        "row_hash",
+        "details"
+    ]
+    available_columns = [col for col in desired_columns if col in df_logs.columns]
+    
     st.dataframe(
-        df_logs[["timestamp", "event_type", "actor", "action", "risk_score", "prev_hash", "row_hash", "details"]],
+        df_logs[available_columns],
         use_container_width=True,
         hide_index=True
     )

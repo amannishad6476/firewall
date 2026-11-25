@@ -145,12 +145,17 @@ class SecurityDashboardService:
                 res.append({
                     "id": l.id,
                     "timestamp": l.timestamp.strftime("%Y-%m-%d %H:%M:%S") if l.timestamp else "N/A",
+                    "event_id": l.event_id or "-",
                     "agent_id": l.agent_id,
                     "event_type": l.event_type,
                     "actor": l.actor,
                     "action_summary": l.action_summary,
+                    "action": l.action_summary,  # backward compatibility alias
                     "decision": l.decision or "-",
                     "risk_score": f"{l.risk_score:.2f}" if l.risk_score is not None else "-",
+                    "prev_hash": l.prev_hash or "GENESIS",
+                    "row_hash": l.row_hash or "-",
+                    "ip_address": l.ip_address or "127.0.0.1",
                     "details": l.details or ""
                 })
             return res
