@@ -1,6 +1,6 @@
 import streamlit as st
 import yaml
-from dashboard.components.theme import apply_cyber_theme, render_soc_header
+from dashboard.components.theme import apply_cyber_theme, render_soc_header, get_current_theme
 from dashboard.services.api_client import dashboard_service
 from backend.app.policies.policy_engine import policy_engine
 
@@ -19,21 +19,27 @@ tab_edit, tab_view = st.tabs(["✏️ Edit YAML Policy", "🔍 Structured View"]
 with tab_edit:
     st.markdown("Modify security rules in declarative YAML format. All updates undergo structural schema validation before persisting.")
     
-    st.markdown("""
+    current_theme = get_current_theme()
+    is_light = "light" in current_theme.lower()
+    editor_bg = "#f6f8fa" if is_light else "#0d1117"
+    editor_fg = "#1f2328" if is_light else "#e6edf3"
+    editor_border = "#d0d7de" if is_light else "#30363d"
+    
+    st.markdown(f"""
     <style>
-        /* YAML Code Editor: High contrast, dark code background, no spellcheck squiggles */
-        .stTextArea textarea {
+        /* YAML Code Editor: High contrast, theme-synced, no spellcheck squiggles */
+        .stTextArea textarea {{
             font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace !important;
             font-size: 0.92rem !important;
             line-height: 1.55 !important;
-            background-color: #0d1117 !important;
-            color: #e6edf3 !important;
-            border: 1px solid #30363d !important;
+            background-color: {editor_bg} !important;
+            color: {editor_fg} !important;
+            border: 1px solid {editor_border} !important;
             border-radius: 6px !important;
             spellcheck: false !important;
             -webkit-spell-check: false !important;
             white-space: pre !important;
-        }
+        }}
     </style>
     """, unsafe_allow_html=True)
 

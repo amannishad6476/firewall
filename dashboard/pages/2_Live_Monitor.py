@@ -58,15 +58,15 @@ with col_left:
         for ev in events[:15]:
             decision_color = "#10b981" if ev["decision"] == "ALLOW" else ("#ef4444" if ev["decision"] == "BLOCK" else "#f59e0b")
             st.markdown(f"""
-            <div style="background: #111827; border-left: 4px solid {decision_color}; border-top: 1px solid #1f2937; border-right: 1px solid #1f2937; border-bottom: 1px solid #1f2937; padding: 12px 16px; border-radius: 6px; margin-bottom: 10px;">
+            <div class="feed-card" style="border-left: 4px solid {decision_color};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 700; color: #f1f5f9; font-size: 0.95rem;">{ev['action_type']} &rarr; <code>{ev['target_resource']}</code></span>
+                    <span class="feed-title">{ev['action_type']} &rarr; <code>{ev['target_resource']}</code></span>
                     <span style="background: {decision_color}22; color: {decision_color}; font-weight: 700; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; border: 1px solid {decision_color};">{ev['decision']}</span>
                 </div>
-                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
+                <div class="feed-meta">
                     Timestamp: {ev['timestamp']} | Agent: <code>{ev['agent_id']}</code> | Threat: <b style="color: {'#ef4444' if ev['threat_detected'] else '#64748b'};">{ev['threat_category']}</b> | Risk Score: <b>{ev['calculated_risk']:.2f}</b>
                 </div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 6px; font-style: italic;">
+                <div class="feed-reason">
                     {ev['decision_reason']}
                 </div>
             </div>

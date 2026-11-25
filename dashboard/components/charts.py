@@ -1,8 +1,43 @@
 import plotly.graph_objects as go
 import plotly.express as px
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from .theme import get_current_theme
 
-def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Figure:
+def get_chart_theme_colors(theme: Optional[str] = None) -> Dict[str, str]:
+    """Provides high-contrast palette mappings for both Dark and Light themes."""
+    if not theme:
+        theme = get_current_theme()
+
+    is_light = "light" in str(theme).lower()
+    if is_light:
+        return {
+            "paper_bg": "#ffffff",
+            "plot_bg": "#ffffff",
+            "title_color": "#0f172a",
+            "text_color": "#334155",
+            "grid_color": "#e2e8f0",
+            "donut_border": "#ffffff",
+            "hist_marker": "#6366f1",
+            "hist_line": "#4f46e5",
+            "bar_marker": "#0284c7",
+            "bar_line": "#0369a1"
+        }
+    else:
+        return {
+            "paper_bg": "#111827",
+            "plot_bg": "#111827",
+            "title_color": "#f8fafc",
+            "text_color": "#cbd5e1",
+            "grid_color": "#1f2937",
+            "donut_border": "#0b0f19",
+            "hist_marker": "#6366f1",
+            "hist_line": "#312e81",
+            "bar_marker": "#38bdf8",
+            "bar_line": "#0284c7"
+        }
+
+def create_decision_pie_chart(allowed: int, blocked: int, pending: int, theme: Optional[str] = None) -> go.Figure:
+    c = get_chart_theme_colors(theme)
     labels = ["ALLOW", "BLOCK", "ASK_HUMAN"]
     values = [allowed, blocked, pending]
     colors = ["#10b981", "#ef4444", "#f59e0b"]
@@ -11,7 +46,7 @@ def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Fi
         labels=labels,
         values=values,
         hole=0.58,
-        marker=dict(colors=colors, line=dict(color='#0b0f19', width=2)),
+        marker=dict(colors=colors, line=dict(color=c["donut_border"], width=2)),
         textinfo='percent',
         textposition='inside',
         insidetextorientation='horizontal',
@@ -21,10 +56,10 @@ def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Fi
 
     fig.update_layout(
         title="Firewall Enforcement Distribution",
-        title_font=dict(color="#f8fafc", size=15),
-        paper_bgcolor="#111827",
-        plot_bgcolor="#111827",
-        font=dict(color="#cbd5e1"),
+        title_font=dict(color=c["title_color"], size=15),
+        paper_bgcolor=c["paper_bg"],
+        plot_bgcolor=c["plot_bg"],
+        font=dict(color=c["text_color"]),
         showlegend=True,
         legend=dict(
             orientation="h",
@@ -32,14 +67,15 @@ def create_decision_pie_chart(allowed: int, blocked: int, pending: int) -> go.Fi
             y=-0.22,
             xanchor="center",
             x=0.5,
-            font=dict(size=12, color="#cbd5e1")
+            font=dict(size=12, color=c["text_color"])
         ),
         margin=dict(t=40, b=50, l=20, r=20),
         height=290
     )
     return fig
 
-def create_risk_distribution_chart(events: List[Dict[str, Any]]) -> go.Figure:
+def create_risk_distribution_chart(events: List[Dict[str, Any]], theme: Optional[str] = None) -> go.Figure:
+    c = get_chart_theme_colors(theme)
     if not events:
         scores = [0.1, 0.4, 0.85]
     else:
@@ -48,24 +84,25 @@ def create_risk_distribution_chart(events: List[Dict[str, Any]]) -> go.Figure:
     fig = go.Figure(data=[go.Histogram(
         x=scores,
         nbinsx=10,
-        marker_color="#6366f1",
-        marker_line=dict(width=1, color="#312e81")
+        marker_color=c["hist_marker"],
+        marker_line=dict(width=1, color=c["hist_line"])
     )])
 
     fig.update_layout(
         title="Risk Score Distribution [0.0 - 1.0]",
-        title_font=dict(color="#f8fafc", size=15),
-        paper_bgcolor="#111827",
-        plot_bgcolor="#111827",
-        font=dict(color="#cbd5e1"),
-        xaxis=dict(title="Normalized Risk Score", gridcolor="#1f2937", range=[0, 1], title_font=dict(color="#94a3b8")),
-        yaxis=dict(title="Frequency", gridcolor="#1f2937", title_font=dict(color="#94a3b8")),
+        title_font=dict(color=c["title_color"], size=15),
+        paper_bgcolor=c["paper_bg"],
+        plot_bgcolor=c["plot_bg"],
+        font=dict(color=c["text_color"]),
+        xaxis=dict(title="Normalized Risk Score", gridcolor=c["grid_color"], range=[0, 1], title_font=dict(color=c["text_color"])),
+        yaxis=dict(title="Frequency", gridcolor=c["grid_color"], title_font=dict(color=c["text_color"])),
         margin=dict(t=40, b=50, l=40, r=20),
         height=290
     )
     return fig
 
-def create_action_bar_chart(events: List[Dict[str, Any]]) -> go.Figure:
+def create_action_bar_chart(events: List[Dict[str, Any]], theme: Optional[str] = None) -> go.Figure:
+    c = get_chart_theme_colors(theme)
     actions_count: Dict[str, int] = {}
     for e in events:
         act = e.get("action_type", "unknown")
@@ -77,18 +114,18 @@ def create_action_bar_chart(events: List[Dict[str, Any]]) -> go.Figure:
     fig = go.Figure(data=[go.Bar(
         x=x,
         y=y,
-        marker_color="#38bdf8",
-        marker_line=dict(color="#0284c7", width=1.5)
+        marker_color=c["bar_marker"],
+        marker_line=dict(color=c["bar_line"], width=1.5)
     )])
 
     fig.update_layout(
         title="Protected Tool Executions by Type",
-        title_font=dict(color="#f8fafc", size=15),
-        paper_bgcolor="#111827",
-        plot_bgcolor="#111827",
-        font=dict(color="#cbd5e1"),
-        xaxis=dict(gridcolor="#1f2937"),
-        yaxis=dict(title="Invocations", gridcolor="#1f2937", title_font=dict(color="#94a3b8")),
+        title_font=dict(color=c["title_color"], size=15),
+        paper_bgcolor=c["paper_bg"],
+        plot_bgcolor=c["plot_bg"],
+        font=dict(color=c["text_color"]),
+        xaxis=dict(gridcolor=c["grid_color"]),
+        yaxis=dict(title="Invocations", gridcolor=c["grid_color"], title_font=dict(color=c["text_color"])),
         margin=dict(t=40, b=50, l=40, r=20),
         height=290
     )

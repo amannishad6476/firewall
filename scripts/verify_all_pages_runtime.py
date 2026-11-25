@@ -21,7 +21,7 @@ def test_pages_runtime():
         print(f"    Events in DB: {total_events}, Approvals: {total_approvals}, Audit Logs: {total_audit}")
         
         # Page 1 Check
-        print(">>> 2. Verifying Page 1 (Security Overview) Data Queries & Charts...")
+        print(">>> 2. Verifying Page 1 (Security Overview) Data Queries & Theme-Adaptive Charts...")
         stats = dashboard_service.get_statistics()
         assert stats["total_inspections"] == total_events
         recent_events = dashboard_service.get_recent_events(limit=50)
@@ -30,11 +30,33 @@ def test_pages_runtime():
             create_risk_distribution_chart,
             create_action_bar_chart
         )
-        pie_fig = create_decision_pie_chart(stats["allowed_actions"], stats["blocked_threats"], stats["pending_approvals"])
-        risk_fig = create_risk_distribution_chart(recent_events)
-        bar_fig = create_action_bar_chart(recent_events)
-        assert pie_fig is not None and risk_fig is not None and bar_fig is not None
-        print("    Page 1 stats query and all 3 Plotly charts created successfully:", stats)
+        from dashboard.components.theme import CYBER_DARK_CSS, CYBER_LIGHT_CSS, get_current_theme
+
+        # Verify Dark theme chart colors
+        pie_dark = create_decision_pie_chart(stats["allowed_actions"], stats["blocked_threats"], stats["pending_approvals"], theme="Dark Mode")
+        risk_dark = create_risk_distribution_chart(recent_events, theme="Dark Mode")
+        bar_dark = create_action_bar_chart(recent_events, theme="Dark Mode")
+        assert pie_dark.layout.paper_bgcolor == "#111827"
+        assert pie_dark.layout.title.font.color == "#f8fafc"
+        assert risk_dark.layout.paper_bgcolor == "#111827"
+        assert bar_dark.layout.paper_bgcolor == "#111827"
+
+        # Verify Light theme chart colors
+        pie_light = create_decision_pie_chart(stats["allowed_actions"], stats["blocked_threats"], stats["pending_approvals"], theme="Light Mode")
+        risk_light = create_risk_distribution_chart(recent_events, theme="Light Mode")
+        bar_light = create_action_bar_chart(recent_events, theme="Light Mode")
+        assert pie_light.layout.paper_bgcolor == "#ffffff"
+        assert pie_light.layout.title.font.color == "#0f172a"
+        assert risk_light.layout.paper_bgcolor == "#ffffff"
+        assert bar_light.layout.paper_bgcolor == "#ffffff"
+
+        # Verify CSS themes exist and have contrast rules
+        assert ".stApp" in CYBER_DARK_CSS and "#0b0f19" in CYBER_DARK_CSS
+        assert ".stApp" in CYBER_LIGHT_CSS and "#f8fafc" in CYBER_LIGHT_CSS
+        assert "feed-card" in CYBER_DARK_CSS and "feed-card" in CYBER_LIGHT_CSS
+        assert "approval-card" in CYBER_DARK_CSS and "approval-card" in CYBER_LIGHT_CSS
+
+        print("    Page 1 stats query, all 3 Dark Plotly charts, and all 3 Light Plotly charts verified successfully:", stats)
         
         # Page 2 Check
         print(">>> 3. Verifying Page 2 (Live Monitor) Simulation...")
