@@ -3,8 +3,13 @@ import pandas as pd
 from dashboard.components.theme import apply_cyber_theme, render_soc_header
 from dashboard.services.api_client import dashboard_service
 
-st.set_page_config(page_title="Human Approval Center | AI Firewall", page_icon="⚖️", layout="wide")
-apply_cyber_theme()
+st.set_page_config(
+    page_title="Human Approval Center | AI Firewall",
+    page_icon="⚖️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+apply_cyber_theme(active_page="pages/4_Approval_Center.py")
 
 render_soc_header(
     title="Human-In-The-Loop Approval Center",
@@ -29,60 +34,27 @@ else:
                 <div style="margin-top: 8px; font-size: 0.85rem; color: #94a3b8;">
                     Approval ID: <code>{req['id']}</code> | Agent: <code>{req['agent_id']}</code> | Time: {req['created_at']} | Category: <b>{req['threat_category']}</b>
                 </div>
-                <div style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 4px; border-left: 3px solid #f59e0b; color: #e2e8f0; font-size: 0.9rem;">
-                    <b>Reason for Review:</b> {req['reason']}
-                </div>
-                <div style="margin-top: 8px; font-size: 0.85rem; color: #cbd5e1;">
-                    <b>Parameters:</b> <code>{req['parameters']}</code>
+                <div style="margin-top: 10px; font-size: 0.9rem; color: #e5e7eb;">
+                    <b>Trigger Reason</b>: {req['reason']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-            col_btn1, col_btn2, col_reviewer, col_notes = st.columns([1, 1, 2, 3])
-            with col_reviewer:
-                reviewer_name = st.text_input("Reviewer Identity", value="security_lead", key=f"rev_{req['id']}")
-            with col_notes:
-                notes = st.text_input("Review Notes", value="Authorized after verifying operational context", key=f"notes_{req['id']}")
-            
-            with col_btn1:
-                if st.button("✅ APPROVE", key=f"app_{req['id']}", use_container_width=True):
-                    res = dashboard_service.approve_action(req["id"], reviewer=reviewer_name, notes=notes)
+            c_act1, c_act2, c_spacer = st.columns([1, 1, 4])
+            with c_act1:
+                if st.button("✅ Approve Action", key=f"app_{req['id']}", use_container_width=True):
+                    res = dashboard_service.approve_request(req['id'])
                     if res["success"]:
-                        st.success(f"Action approved! ID: {req['id']}")
+                        st.success(f"Operation {req['id'][:8]} APPROVED.")
                         st.rerun()
                     else:
-                        st.error(res["message"])
+                        st.error(f"Approval failed: {res.get('error')}")
 
-            with col_btn2:
-                if st.button("❌ REJECT", key=f"rej_{req['id']}", use_container_width=True):
-                    res = dashboard_service.reject_action(req["id"], reviewer=reviewer_name, notes=notes)
+            with c_act2:
+                if st.button("❌ Reject Action", key=f"rej_{req['id']}", use_container_width=True):
+                    res = dashboard_service.reject_request(req['id'])
                     if res["success"]:
-                        st.warning(f"Action rejected! ID: {req['id']}")
+                        st.warning(f"Operation {req['id'][:8]} REJECTED.")
                         st.rerun()
                     else:
-                        st.error(res["message"])
-
-st.markdown("---")
-st.markdown("### 📜 Recent Approval Resolutions")
-db = dashboard_service.get_db()
-try:
-    from backend.app.models.db_models import ApprovalRequest
-    resolved = db.query(ApprovalRequest).filter(ApprovalRequest.status != "PENDING").order_by(ApprovalRequest.resolved_at.desc()).limit(20).all()
-    if resolved:
-        res_data = []
-        for r in resolved:
-            res_data.append({
-                "Resolved At": r.resolved_at.strftime("%Y-%m-%d %H:%M:%S") if r.resolved_at else "N/A",
-                "Action": r.action_type,
-                "Target": r.target_resource,
-                "Agent": r.agent_id,
-                "Risk": f"{r.calculated_risk:.2f}",
-                "Status": r.status,
-                "Reviewer": r.resolved_by or "N/A",
-                "Notes": r.resolution_notes or ""
-            })
-        st.dataframe(pd.DataFrame(res_data), use_container_width=True, hide_index=True)
-    else:
-        st.info("No resolved approvals recorded yet.")
-finally:
-    db.close()
+                        st.error(f"Rejection failed: {res.get('error')}")

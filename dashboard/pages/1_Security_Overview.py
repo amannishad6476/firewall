@@ -8,8 +8,13 @@ from dashboard.components.charts import (
 )
 from dashboard.services.api_client import dashboard_service
 
-st.set_page_config(page_title="Security Overview | AI Firewall", page_icon="🛡️", layout="wide")
-apply_cyber_theme()
+st.set_page_config(
+    page_title="Security Overview | AI Firewall",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+apply_cyber_theme(active_page="pages/1_Security_Overview.py")
 
 render_soc_header(
     title="AI Agent Firewall - Security Operations Center",
@@ -52,12 +57,17 @@ with row_col2:
 with row_col3:
     st.plotly_chart(create_action_bar_chart(recent_events), use_container_width=True)
 
-# Recent Security Events Table
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Recent Interceptions
 st.markdown("### 📋 Recent Security Events")
 if recent_events:
-    df = pd.DataFrame(recent_events)[
-        ["timestamp", "agent_id", "action_type", "target_resource", "threat_category", "calculated_risk", "decision", "decision_reason"]
-    ]
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    df = pd.DataFrame(recent_events)
+    display_cols = ["timestamp", "agent_id", "action_type", "target_resource", "risk_score", "decision", "threat_category"]
+    st.dataframe(
+        df[[c for c in display_cols if c in df.columns]],
+        use_container_width=True,
+        hide_index=True
+    )
 else:
-    st.info("No security events recorded in SQLite yet. Run the Security Demo or Test Suite to generate telemetry.")
+    st.info("No security events logged yet.")

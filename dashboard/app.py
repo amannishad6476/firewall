@@ -6,10 +6,10 @@ st.set_page_config(
     page_title="AI Agent Firewall & Security Platform",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-apply_cyber_theme()
+apply_cyber_theme(active_page="app.py")
 
 render_soc_header(
     title="AI AGENT FIREWALL & SECURITY MONITORING PLATFORM",
@@ -22,14 +22,14 @@ st.markdown("""
 This platform acts as an active, fail-closed security gateway deployed between **Autonomous AI Agents** and **Protected Tools** (Web, Filesystem, Email, Database, and APIs).
 
 #### 🧭 Quick Navigation
-Select a capability from the sidebar menu to monitor and operate the security platform:
-- **📊 1. Security Overview**: Executive SOC dashboard with live metrics, decision distributions, and recent telemetry.
-- **📡 2. Live Monitor**: Real-time tool interception feed and simulated agent call generator.
-- **☣️ 3. Threat Detection**: Forensic multi-layer inspector for CSS hiding, zero-width steganography, Base64 evasion, and prompt injection.
-- **⚖️ 4. Approval Center**: Human-in-the-loop review station to safely authorize or reject elevated-risk operations.
-- **📜 5. Policy Manager**: Declarative YAML security policy configuration, domain boundary rules, and role permissions.
-- **📑 6. Audit Logs**: Tamper-evident SQLite audit records with sensitive credential redaction.
-- **🧪 7. Security Testing Lab**: Automated interactive verification suite with detection rate, false positive rate, and latency analysis.
+Select a capability from the top navigation bar to monitor and operate the security platform:
+- **📊 Overview**: Executive SOC dashboard with live metrics, decision distributions, and recent telemetry.
+- **📡 Live Monitor**: Real-time tool interception feed and simulated agent call generator.
+- **☣️ Threats**: Forensic multi-layer inspector for CSS hiding, zero-width steganography, Base64 evasion, and prompt injection.
+- **⚖️ Approvals**: Human-in-the-loop review station to safely authorize or reject elevated-risk operations.
+- **📜 Policies**: Declarative YAML security policy configuration, domain boundary rules, and role permissions.
+- **📑 Audit Logs**: Tamper-evident SQLite audit records with sensitive credential redaction.
+- **🧪 Testing Lab**: Automated interactive verification suite with detection rate, false positive rate, and latency analysis.
 """)
 
 stats = dashboard_service.get_statistics()

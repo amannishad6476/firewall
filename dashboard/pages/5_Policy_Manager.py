@@ -4,8 +4,13 @@ from dashboard.components.theme import apply_cyber_theme, render_soc_header
 from dashboard.services.api_client import dashboard_service
 from backend.app.policies.policy_engine import policy_engine
 
-st.set_page_config(page_title="Security Policy Manager | AI Firewall", page_icon="📜", layout="wide")
-apply_cyber_theme()
+st.set_page_config(
+    page_title="Security Policy Manager | AI Firewall",
+    page_icon="📜",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+apply_cyber_theme(active_page="pages/5_Policy_Manager.py")
 
 render_soc_header(
     title="Declarative Security Policy Governance",
@@ -28,22 +33,11 @@ with tab_edit:
                 st.success("Security policy validated and updated successfully!")
                 st.rerun()
             else:
-                st.error(f"Failed to update policy: {res['error']}")
+                st.error(f"Policy Validation Error: {res.get('error')}")
 
 with tab_view:
-    policy = policy_engine.policy
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### 🌐 Domain Governance")
-        st.write("**Allowed Domains:**", policy.get("domains", {}).get("allowed", []))
-        st.write("**Blocked Domains:**", policy.get("domains", {}).get("blocked", []))
-        
-        st.markdown("#### ⚖️ Normalized Risk Thresholds")
-        st.json(policy.get("thresholds", {}))
-
-    with c2:
-        st.markdown("#### 🔒 Sensitive Protected Actions")
-        st.write(policy.get("sensitive_operations", []))
-
-        st.markdown("#### 🤖 Agent Role Permissions")
-        st.json(policy.get("agent_permissions", {}))
+    try:
+        parsed = yaml.safe_load(current_yaml)
+        st.json(parsed)
+    except Exception as e:
+        st.error(f"Failed to parse policy structure: {e}")

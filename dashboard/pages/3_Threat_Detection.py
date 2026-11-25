@@ -4,8 +4,13 @@ from dashboard.components.theme import apply_cyber_theme, render_soc_header
 from backend.app.detection.input_scanner import scanner
 from backend.app.schemas.firewall_schemas import OriginType
 
-st.set_page_config(page_title="Threat Detection Engine | AI Firewall", page_icon="☣️", layout="wide")
-apply_cyber_theme()
+st.set_page_config(
+    page_title="Threat Detection Engine | AI Firewall",
+    page_icon="☣️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+apply_cyber_theme(active_page="pages/3_Threat_Detection.py")
 
 render_soc_header(
     title="Multi-Layered Threat Detection & Obfuscation Analysis",
@@ -28,38 +33,29 @@ if st.button("Run Deep Threat Inspection"):
     with st.spinner("Analyzing content across all detection layers..."):
         res = scanner.scan(custom_input, source_type=OriginType.WEBPAGE)
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Threat Detected", "YES - ATTACK" if res.detected else "CLEAN - NO THREAT", delta_color="inverse" if res.detected else "normal")
-        with col2:
-            st.metric("Threat Category", res.threat_category.value)
-        with col3:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("Primary Threat", res.threat_category.value)
+        with c2:
             st.metric("Severity Level", res.severity.value)
+        with c3:
+            st.metric("Confidence Score", f"{res.confidence * 100:.1f}%")
+        with c4:
+            st.metric("Threat Detected?", "YES" if res.is_threat else "NO")
 
         st.markdown("---")
+        st.markdown("#### 🔬 Detailed Forensic Layer Breakdown")
         
-        st.markdown(f"**Explanation:** {res.explanation}")
+        col_res1, col_res2 = st.columns(2)
+        with col_res1:
+            st.markdown(f"**Detector Details**: {res.details}")
+            st.markdown(f"**Sanitized Content Preview**:")
+            st.code(res.sanitized_content[:300] + ("..." if len(res.sanitized_content) > 300 else ""), language="html")
 
-        if res.evidence:
-            st.markdown("#### 🚩 Forensic Evidence")
-            for ev in res.evidence:
-                st.error(f"• {ev}")
-
-        st.markdown("#### 🔬 Detailed Findings by Layer")
-        t1, t2, t3, t4 = st.tabs(["CSS Hidden Text", "Zero-Width Unicode", "Base64 Obfuscation", "Prompt Injection"])
-        
-        with t1:
-            css_data = res.raw_findings.get("css_hidden_analysis", {})
-            st.json(css_data)
-            
-        with t2:
-            uni_data = res.raw_findings.get("unicode_analysis", {})
-            st.json(uni_data)
-
-        with t3:
-            b64_data = res.raw_findings.get("base64_analysis", {})
-            st.json(b64_data)
-
-        with t4:
-            pi_data = res.raw_findings.get("prompt_injection_analysis", {})
-            st.json(pi_data)
+        with col_res2:
+            st.markdown("**Multi-Layer Detection Indicators**:")
+            if res.indicators:
+                for ind in res.indicators:
+                    st.warning(f"⚠️ {ind}")
+            else:
+                st.success("✅ No malicious evasion or injection patterns detected.")

@@ -3,8 +3,13 @@ import pandas as pd
 from dashboard.components.theme import apply_cyber_theme, render_soc_header
 from dashboard.services.api_client import dashboard_service
 
-st.set_page_config(page_title="Audit Logs | AI Firewall", page_icon="📑", layout="wide")
-apply_cyber_theme()
+st.set_page_config(
+    page_title="Audit Logs | AI Firewall",
+    page_icon="📑",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+apply_cyber_theme(active_page="pages/6_Audit_Logs.py")
 
 render_soc_header(
     title="Tamper-Evident Security Audit Logs",
@@ -29,12 +34,14 @@ with col_s:
 with col_limit:
     record_limit = st.selectbox("Max Records", [50, 100, 200, 500], index=1)
 
-logs = dashboard_service.get_audit_logs(search=search_term if search_term else None, limit=record_limit)
-
-st.markdown(f"**Found {len(logs)} audit record(s)**")
+logs = dashboard_service.get_audit_logs(limit=record_limit, search=search_term if search_term else None)
 
 if logs:
-    df = pd.DataFrame(logs)[["timestamp", "actor", "event_type", "agent_id", "decision", "risk_score", "action_summary", "details"]]
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    df_logs = pd.DataFrame(logs)
+    st.dataframe(
+        df_logs[["timestamp", "event_type", "actor", "action", "risk_score", "prev_hash", "row_hash", "details"]],
+        use_container_width=True,
+        hide_index=True
+    )
 else:
-    st.info("No audit logs matching search parameters.")
+    st.info("No audit logs matching query found.")
