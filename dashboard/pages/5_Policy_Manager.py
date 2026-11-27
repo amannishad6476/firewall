@@ -1,5 +1,6 @@
 import streamlit as st
 import yaml
+import pandas as pd
 from dashboard.components.theme import apply_cyber_theme, render_soc_header, get_current_theme
 from dashboard.services.api_client import dashboard_service
 from backend.app.policies.policy_engine import policy_engine
@@ -38,7 +39,7 @@ st.markdown("""
 
 current_yaml = dashboard_service.get_policy_yaml()
 
-tab_edit, tab_view = st.tabs(["✏️ Edit YAML Policy", "🔍 Structured View"])
+tab_edit, tab_view, tab_inventory = st.tabs(["✏️ Edit YAML Policy", "🔍 Structured View", "🤖 Agent Inventory & Tiers"])
 
 with tab_edit:
     st.markdown("Modify security rules in declarative YAML format. All updates undergo structural schema validation before persisting.")
@@ -60,3 +61,21 @@ with tab_view:
         st.json(parsed)
     except Exception as e:
         st.error(f"Failed to parse policy structure: {e}")
+
+with tab_inventory:
+    st.markdown("### 🤖 Registered AI Agents & Sandboxing Governance")
+    st.markdown("Inspect registered autonomous agents, their security tiers, model providers, and runtime execution boundaries.")
+    agents_list = dashboard_service.get_registered_agents()
+    if agents_list:
+        df_agents = pd.DataFrame(agents_list)
+        display_cols = [
+            "id", "name", "role", "security_tier", "model_provider", 
+            "model_name", "sandbox_mode", "trust_level", "is_active"
+        ]
+        st.dataframe(
+            df_agents[[c for c in display_cols if c in df_agents.columns]],
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("No registered agents found in database.")

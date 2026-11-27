@@ -29,6 +29,8 @@ from ..tools.protected_tools import protected_tools
 from ..approvals.manager import approval_manager
 from ..policies.policy_engine import policy_engine
 from ..logging.audit_logger import audit_logger
+from ..detection.file_scanner import file_scanner, FileScanResult
+from ..agents.llm_router import llm_router
 from ..config.settings import settings
 
 router = APIRouter()
@@ -476,6 +478,10 @@ def register_agent(
         description=agent_in.description,
         role=agent_in.role,
         trust_level=agent_in.trust_level,
+        security_tier=agent_in.security_tier or "TIER_2_RESTRICTED",
+        model_provider=agent_in.model_provider or "Anthropic",
+        model_name=agent_in.model_name or "claude-3-5-sonnet",
+        sandbox_mode=agent_in.sandbox_mode or "STANDARD_SANDBOX",
         is_active=True
     )
     db.add(new_agent)
@@ -520,4 +526,47 @@ def get_audit_logs(
         search_query=search,
         limit=limit,
         offset=offset
+    )
+
+# -------------------------------------------------------------
+# 9. File & Attachment Security Scanner Endpoint
+# -------------------------------------------------------------
+from fastapi import UploadFile, File
+
+@router.post("/scan/file", response_model=FileScanResult, tags=["Detection"])
+def scan_attachment_file(file: UploadFile = File(...)):
+    """
+    Scans uploaded or ingested files (.txt, .pdf, .csv, code files)
+    for prompt injection, covert steganography, secrets, and formula exploits.
+    """
+    file_bytes = file.file.read()
+    return file_scanner.scan_file(
+        filename=file.filename or "uploaded_file",
+        file_bytes=file_bytes,
+        mime_type=file.content_type
+    )
+
+# -------------------------------------------------------------
+# 10. Multi-Provider LLM & Token Guard Endpoints
+# -------------------------------------------------------------
+@router.get("/llm/providers", tags=["LLM"])
+def list_llm_providers():
+    """Lists configured LLM model providers and their operational statuses."""
+    return llm_router.get_configured_providers()
+
+@router.post("/llm/generate", tags=["LLM"])
+def generate_llm_completion(req: Dict[str, Any]):
+    """
+    Routes an AI generation request through Token Guard and the selected provider
+    with fail-safe fallback to the Offline Simulated Sandbox.
+    """
+    prompt = req.get("prompt", "")
+    provider = req.get("provider", "Offline Simulated Sandbox")
+    model = req.get("model")
+    max_tokens = req.get("max_tokens", 4096)
+    return llm_router.generate_completion(
+        prompt=prompt,
+        provider=provider,
+        model=model,
+        max_tokens=max_tokens
     )

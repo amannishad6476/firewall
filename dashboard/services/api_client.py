@@ -1,6 +1,7 @@
 import sys
 import os
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 import requests
 
@@ -94,9 +95,18 @@ class SecurityDashboardService:
     def get_pending_approvals(self) -> List[Dict[str, Any]]:
         db = self.get_db()
         try:
+            # Auto-expire any stale requests before returning
+            approval_manager.expire_stale_approvals(db)
             approvals = db.query(ApprovalRequest).filter(ApprovalRequest.status == "PENDING").order_by(ApprovalRequest.created_at.desc()).all()
             res = []
+            now = datetime.now(timezone.utc)
             for a in approvals:
+                # Calculate remaining seconds until expiry
+                seconds_remaining = 0
+                if a.expires_at:
+                    exp = a.expires_at if a.expires_at.tzinfo else a.expires_at.replace(tzinfo=timezone.utc)
+                    seconds_remaining = max(0, int((exp - now).total_seconds()))
+                
                 res.append({
                     "id": a.id,
                     "event_id": a.event_id,
@@ -108,7 +118,9 @@ class SecurityDashboardService:
                     "threat_category": a.threat_category or "ELEVATED_RISK",
                     "reason": a.reason,
                     "status": a.status,
-                    "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "N/A"
+                    "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "N/A",
+                    "expires_at": a.expires_at.strftime("%Y-%m-%d %H:%M:%S") if a.expires_at else "N/A",
+                    "seconds_remaining": seconds_remaining
                 })
             return res
         finally:
@@ -121,12 +133,20 @@ class SecurityDashboardService:
         finally:
             db.close()
 
+    def approve_request(self, approval_id: str, reviewer: str = "security_officer", notes: str = "") -> Dict[str, Any]:
+        """Alias for approve_action to maintain backwards compatibility."""
+        return self.approve_action(approval_id, reviewer=reviewer, notes=notes)
+
     def reject_action(self, approval_id: str, reviewer: str = "security_officer", notes: str = "") -> Dict[str, Any]:
         db = self.get_db()
         try:
             return approval_manager.reject(db, approval_id, reviewer=reviewer, notes=notes)
         finally:
             db.close()
+
+    def reject_request(self, approval_id: str, reviewer: str = "security_officer", notes: str = "") -> Dict[str, Any]:
+        """Alias for reject_action to maintain backwards compatibility."""
+        return self.reject_action(approval_id, reviewer=reviewer, notes=notes)
 
     def get_audit_logs(self, search: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
         db = self.get_db()
@@ -186,6 +206,29 @@ class SecurityDashboardService:
             return {"success": True, "policy": updated}
         except Exception as e:
             return {"success": False, "error": str(e)}
+        finally:
+            db.close()
+
+    def get_registered_agents(self) -> List[Dict[str, Any]]:
+        db = self.get_db()
+        try:
+            agents = db.query(Agent).all()
+            res = []
+            for a in agents:
+                res.append({
+                    "id": a.id,
+                    "name": a.name,
+                    "description": a.description or "",
+                    "role": a.role,
+                    "trust_level": round(a.trust_level, 2),
+                    "security_tier": getattr(a, "security_tier", "TIER_2_RESTRICTED") or "TIER_2_RESTRICTED",
+                    "model_provider": getattr(a, "model_provider", "Anthropic") or "Anthropic",
+                    "model_name": getattr(a, "model_name", "claude-3-5-sonnet") or "claude-3-5-sonnet",
+                    "sandbox_mode": getattr(a, "sandbox_mode", "STANDARD_SANDBOX") or "STANDARD_SANDBOX",
+                    "is_active": a.is_active,
+                    "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "N/A"
+                })
+            return res
         finally:
             db.close()
 

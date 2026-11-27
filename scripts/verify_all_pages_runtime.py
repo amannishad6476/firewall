@@ -85,10 +85,13 @@ def test_pages_runtime():
         print(f"    Page 4 pending approvals retrieved: {len(pending)}")
 
         # Page 5 Check
-        print(">>> 6. Verifying Page 5 (Policy Manager)...")
+        print(">>> 6. Verifying Page 5 (Policy Manager & Agent Inventory)...")
         yaml_content = dashboard_service.get_policy_yaml()
         assert len(yaml_content) > 50
-        print(f"    Page 5 policy YAML retrieved successfully ({len(yaml_content)} chars).")
+        agents_inv = dashboard_service.get_registered_agents()
+        assert len(agents_inv) >= 1
+        assert "model_provider" in agents_inv[0] and "security_tier" in agents_inv[0]
+        print(f"    Page 5 policy YAML retrieved successfully ({len(yaml_content)} chars) & {len(agents_inv)} agents in inventory.")
 
         # Page 6 Check
         print(">>> 7. Verifying Page 6 (Audit Logs & Hash Chain)...")

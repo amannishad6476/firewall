@@ -26,6 +26,10 @@ class Agent(Base):
     description = Column(String(256), nullable=True)
     role = Column(String(64), default="assistant")
     trust_level = Column(Float, default=0.5)  # 0.0 to 1.0
+    security_tier = Column(String(64), default="TIER_2_RESTRICTED")
+    model_provider = Column(String(64), default="Anthropic")
+    model_name = Column(String(64), default="claude-3-5-sonnet")
+    sandbox_mode = Column(String(64), default="STANDARD_SANDBOX")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=get_utc_now)
     

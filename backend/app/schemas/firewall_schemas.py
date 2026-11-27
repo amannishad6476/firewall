@@ -163,6 +163,10 @@ class AgentCreateRequest(BaseModel):
     description: Optional[str] = None
     role: str = "assistant"
     trust_level: float = 0.5
+    security_tier: Optional[str] = "TIER_2_RESTRICTED"
+    model_provider: Optional[str] = "Anthropic"
+    model_name: Optional[str] = "claude-3-5-sonnet"
+    sandbox_mode: Optional[str] = "STANDARD_SANDBOX"
 
 class AgentResponse(BaseModel):
     id: str
@@ -170,6 +174,10 @@ class AgentResponse(BaseModel):
     description: Optional[str] = None
     role: str
     trust_level: float
+    security_tier: Optional[str] = "TIER_2_RESTRICTED"
+    model_provider: Optional[str] = "Anthropic"
+    model_name: Optional[str] = "claude-3-5-sonnet"
+    sandbox_mode: Optional[str] = "STANDARD_SANDBOX"
     is_active: bool
     created_at: datetime
 

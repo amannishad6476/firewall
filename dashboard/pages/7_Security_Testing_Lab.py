@@ -5,6 +5,8 @@ from dashboard.components.theme import apply_cyber_theme, render_soc_header
 from dashboard.services.api_client import dashboard_service
 from backend.app.schemas.firewall_schemas import FirewallCheckRequest, ContextTaintInfo, OriginType
 from backend.app.firewall.engine import firewall_engine
+from backend.app.agents.mock_agent import MockAIAgent
+from backend.app.agents.llm_router import llm_router
 
 st.set_page_config(
     page_title="Security Testing Lab | AI Firewall",
@@ -16,10 +18,17 @@ apply_cyber_theme(active_page="pages/7_Security_Testing_Lab.py")
 
 render_soc_header(
     title="Security Testing & Verification Lab",
-    subtitle="Interactive test runner for prompt injection, zero-width steganography, and indirect taint attacks."
+    subtitle="Interactive test runner for prompt injection, multi-provider LLM sandbox, and Protected vs. Unprotected Agent execution."
 )
 
-st.info("ℹ️ **Verification Notice**: The metrics computed below reflect the local automated security test suite designed to validate detection engines, risk scoring, and taint boundaries. They are simulated test suite results, clearly distinguished from third-party benchmark evaluations.")
+tab_suite, tab_interactive_demo, tab_llm_guard = st.tabs([
+    "🧪 Automated Security Test Battery",
+    "🤖 Interactive Agent: Protected vs. Unprotected Demo",
+    "🛡️ Multi-Provider LLM & Token Guard Sandbox"
+])
+
+with tab_suite:
+    st.info("ℹ️ **Verification Notice**: The metrics computed below reflect the local automated security test suite designed to validate detection engines, risk scoring, and taint boundaries. They are simulated test suite results, clearly distinguished from third-party benchmark evaluations.")
 
 # Define comprehensive test battery
 TEST_SUITE = [
@@ -140,3 +149,99 @@ if st.button("🚀 Run Live Test Battery (6 Test Cases)", use_container_width=Tr
         
     st.markdown("### 📊 Test Battery Detailed Execution Results")
     st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+
+with tab_interactive_demo:
+    st.markdown("### 🤖 Interactive Agent ('Subway Coders') Execution Comparison")
+    st.markdown("Compare autonomous agent execution in **Protected Mode** (proxied through the AI Firewall with zero-trust taint isolation) vs. **Unprotected Mode** (direct execution vulnerable to indirect prompt injection).")
+
+    demo_c1, demo_c2 = st.columns(2)
+    with demo_c1:
+        demo_agent_mode = st.radio(
+            "Select Execution Guard Mode:",
+            ["🛡️ Protected Mode (AI Firewall Proxied)", "⚠️ Unprotected Mode (Direct Agent Execution)"],
+            index=0
+        )
+    with demo_c2:
+        demo_target_url = st.selectbox(
+            "Select Target Untrusted Web Resource:",
+            [
+                "https://external-news.corp/poisoned_webpage.html",
+                "https://trusted-internal.corp/safe_docs.html"
+            ]
+        )
+
+    demo_user_goal = st.text_input("User Goal / Instruction:", value="Summarize the external research webpage and report key findings.")
+
+    # Optional file attachment ingestion
+    demo_uploaded = st.file_uploader("Optional: Ingest Local File Attachment into Agent Context", type=["txt", "pdf", "csv", "py"])
+    demo_file_info = ""
+    if demo_uploaded is not None:
+        demo_file_info = f"Attached file: '{demo_uploaded.name}' ({len(demo_uploaded.getvalue())} bytes)"
+        st.caption(f"📎 {demo_file_info}")
+
+    if st.button("⚡ Execute Agent Workflow", type="primary", use_container_width=True):
+        agent_runner = MockAIAgent(agent_id="default_agent", name="Subway Coders Research Agent")
+        
+        with st.status(f"Executing Agent in {demo_agent_mode}...", expanded=True) as status_box:
+            st.write("Step 1: Ingesting user prompt and file attachments...")
+            time.sleep(0.3)
+            
+            db = dashboard_service.get_db()
+            try:
+                if "Unprotected" in demo_agent_mode:
+                    st.write("Step 2: Dispatching direct unmonitored tool calls to target resource...")
+                    res = agent_runner.run_unprotected(demo_user_goal, demo_target_url)
+                    status_box.update(label="⚠️ Unprotected Execution Finished - Agent Compromised!", state="error")
+                else:
+                    st.write("Step 2: Routing tool calls and context taint through AI Firewall Proxy...")
+                    res = agent_runner.run_protected(demo_user_goal, demo_target_url, db)
+                    status_box.update(label="🛡️ Protected Execution Finished - Threats Blocked!", state="complete")
+            finally:
+                db.close()
+
+            # Display execution steps
+            st.markdown("#### 📜 Agent Thought & Execution Trace")
+            for idx, trace_item in enumerate(res.get("trace", [])):
+                with st.expander(f"Step {idx+1}: {trace_item.get('step')}", expanded=True):
+                    for k, v in trace_item.items():
+                        if k != "step":
+                            st.write(f"**{k}**: {v}")
+
+            st.markdown("---")
+            if res.get("status") == "COMPROMISED":
+                st.error(f"🚨 **Vulnerability Result**: {res.get('security_alert')}")
+            elif res.get("status") == "PROTECTED_BLOCKED":
+                st.success(f"🛡️ **Firewall Protection Result**: {res.get('security_alert')}")
+            else:
+                st.info(f"ℹ️ **Execution Result**: {res.get('summary', 'Execution finished cleanly.')}")
+
+with tab_llm_guard:
+    st.markdown("### 🛡️ Multi-Provider LLM & Token Guard Sandbox")
+    st.markdown("Configure and inspect model providers (Gemini, OpenRouter, Hugging Face, Offline Simulated Sandbox) and test **Token Guard** against oversized prompt payloads.")
+
+    col_llm1, col_llm2 = st.columns([1.5, 1])
+    
+    with col_llm1:
+        st.markdown("#### 🌐 Active Model Providers & Sandboxing")
+        providers = llm_router.get_configured_providers()
+        df_prov = pd.DataFrame(providers)
+        st.dataframe(df_prov, use_container_width=True, hide_index=True)
+
+    with col_llm2:
+        st.markdown("#### 🧪 Test Token Guard & Inference")
+        selected_prov = st.selectbox("Select Provider:", [p["provider"] for p in providers])
+        max_tok = st.slider("Max Token Limit (Guard):", min_value=64, max_value=8192, value=1024, step=64)
+        test_prompt = st.text_area("Prompt / Payload to Send:", value="Analyze this codebase snippet and provide security hardening recommendations.", height=120)
+        
+        if st.button("Submit to Token Guard & Model", use_container_width=True):
+            with st.spinner("Evaluating through Token Guard and LLM Gateway..."):
+                gen_res = llm_router.generate_completion(
+                    prompt=test_prompt,
+                    provider=selected_prov,
+                    max_tokens=max_tok
+                )
+                if gen_res["success"]:
+                    st.success(f"✅ Generated via {gen_res['provider']} ({gen_res['tokens_used']} tokens used)")
+                    st.code(gen_res["content"], language="text")
+                else:
+                    st.error(f"❌ {gen_res.get('error')}")

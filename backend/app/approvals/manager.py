@@ -21,11 +21,17 @@ class ApprovalManager:
         calculated_risk: float,
         threat_category: Optional[str],
         reason: str,
+        expires_in_seconds: Optional[int] = None,
         expires_in_minutes: Optional[int] = None
     ) -> ApprovalRequest:
         now = datetime.now(timezone.utc)
-        exp_minutes = expires_in_minutes or settings.APPROVAL_EXPIRY_MINUTES
-        expires_at = now + timedelta(minutes=exp_minutes)
+        if expires_in_seconds is not None:
+            expires_at = now + timedelta(seconds=expires_in_seconds)
+        elif expires_in_minutes is not None:
+            expires_at = now + timedelta(minutes=expires_in_minutes)
+        else:
+            exp_sec = getattr(settings, "APPROVAL_EXPIRY_SECONDS", 60)
+            expires_at = now + timedelta(seconds=exp_sec)
 
         approval = ApprovalRequest(
             event_id=event_id,
@@ -159,7 +165,57 @@ class ApprovalManager:
             "status": "REJECTED"
         }
 
+    def expire_stale_approvals(self, db: Session) -> int:
+        """
+        Scans for any PENDING approvals that have passed their expires_at timestamp,
+        auto-rejects them with fail-safe status 'EXPIRED', updates the associated
+        SecurityEvent, and records tamper-evident audit logs.
+        """
+        now = datetime.now(timezone.utc)
+        # Check both timezone-aware and naive timestamps
+        stale_requests = db.query(ApprovalRequest).filter(
+            ApprovalRequest.status == "PENDING",
+            ApprovalRequest.expires_at != None
+        ).all()
+
+        expired_count = 0
+        for req in stale_requests:
+            exp = req.expires_at if req.expires_at.tzinfo else req.expires_at.replace(tzinfo=timezone.utc)
+            if exp <= now:
+                req.status = "EXPIRED"
+                req.resolved_at = now
+                req.resolved_by = "SYSTEM_FAILSAFE"
+                req.resolution_notes = "Auto-rejected: Approval window expired before human review."
+
+                # Update associated security event
+                event = db.query(SecurityEvent).filter(SecurityEvent.id == req.event_id).first()
+                if event:
+                    event.execution_status = "EXPIRED"
+                    event.decision = "BLOCK"
+                    event.decision_reason += " | Fail-safe auto-rejected due to approval expiration."
+
+                # Record audit log
+                audit = AuditLog(
+                    event_id=event.id if event else None,
+                    agent_id=req.agent_id,
+                    event_type="APPROVAL_EXPIRED",
+                    actor="FIREWALL_FAILSAFE",
+                    action_summary=f"Approval expired for action '{req.action_type}' targeting '{req.target_resource}'",
+                    decision="BLOCK",
+                    risk_score=req.calculated_risk,
+                    details="Action fail-safe auto-rejected due to approval timeout."
+                )
+                db.add(audit)
+                expired_count += 1
+
+        if expired_count > 0:
+            db.commit()
+
+        return expired_count
+
     def get_pending(self, db: Session) -> List[ApprovalRequest]:
+        # Expire stale approvals first to maintain real-time sync
+        self.expire_stale_approvals(db)
         return db.query(ApprovalRequest).filter(ApprovalRequest.status == "PENDING").order_by(ApprovalRequest.created_at.desc()).all()
 
     def get_all(self, db: Session, limit: int = 100) -> List[ApprovalRequest]:

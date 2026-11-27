@@ -1,5 +1,47 @@
 import streamlit as st
 
+# Client-side interceptor to prevent 404s on multipage subpath probes (e.g. /Approval_Center/_stcore/*)
+CLIENT_URL_NORMALIZE_SCRIPT = """
+<script>
+(function() {
+    if (window.__stcore_fetch_interceptor_installed) return;
+    window.__stcore_fetch_interceptor_installed = true;
+    
+    // Ensure BACKEND_BASE_URL is recognized as root
+    window.__streamlit = window.__streamlit || {};
+    if (!window.__streamlit.BACKEND_BASE_URL) {
+        window.__streamlit.BACKEND_BASE_URL = window.location.origin;
+    }
+
+    // Intercept fetch calls targeting relative subpaths of _stcore (e.g. /Approval_Center/_stcore/host-config)
+    const origFetch = window.fetch;
+    window.fetch = function(input, init) {
+        try {
+            if (typeof input === 'string') {
+                if (input.includes('/_stcore/host-config') && !input.startsWith('/_stcore/host-config')) {
+                    input = '/_stcore/host-config';
+                } else if (input.includes('/_stcore/health') && !input.startsWith('/_stcore/health')) {
+                    input = '/_stcore/health';
+                }
+            } else if (input && input.url) {
+                const u = new URL(input.url, window.location.href);
+                if (u.pathname.includes('/_stcore/host-config') && u.pathname !== '/_stcore/host-config') {
+                    u.pathname = '/_stcore/host-config';
+                    input = new Request(u.toString(), init || input);
+                } else if (u.pathname.includes('/_stcore/health') && u.pathname !== '/_stcore/health') {
+                    u.pathname = '/_stcore/health';
+                    input = new Request(u.toString(), init || input);
+                }
+            }
+        } catch (e) {
+            // Passthrough safely on error
+        }
+        return origFetch.call(this, input, init);
+    };
+})();
+</script>
+"""
+
 HIDE_SIDEBAR_CSS = """
 <style>
     /* Hide Streamlit default sidebar and sidebar navigation elements */
@@ -27,7 +69,7 @@ HIDE_SIDEBAR_CSS = """
     /* Styling for top navbar container */
     .top-navbar-wrapper {
         margin-bottom: 1.25rem;
-        padding: 0.5rem 0.75rem;
+        padding: 0.6rem 0.85rem;
         border-radius: 10px;
         backdrop-filter: blur(8px);
     }
@@ -45,9 +87,9 @@ CYBER_DARK_CSS = """
     
     /* Top navbar container styling - Dark */
     .top-navbar-wrapper {
-        background: #111827;
-        border: 1px solid #1f2937;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+        background: #111827 !important;
+        border: 1px solid #1f2937 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3) !important;
     }
 
     /* Top navbar page links/buttons styling - Dark */
@@ -59,12 +101,12 @@ CYBER_DARK_CSS = """
         border-radius: 6px !important;
         font-size: 0.82rem !important;
         font-weight: 500 !important;
+        text-decoration: none !important;
         transition: all 0.15s ease-in-out !important;
     }
-    .top-navbar-wrapper [data-testid="stPageLink"] p,
-    .top-navbar-wrapper [data-testid="stPageLink"] span,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] p,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] span {
+    .top-navbar-wrapper [data-testid="stPageLink"] *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a *,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] * {
         color: #cbd5e1 !important;
     }
     .top-navbar-wrapper [data-testid="stPageLink"]:hover,
@@ -73,10 +115,9 @@ CYBER_DARK_CSS = """
         background-color: #312e81 !important;
         border-color: #4f46e5 !important;
     }
-    .top-navbar-wrapper [data-testid="stPageLink"]:hover p,
-    .top-navbar-wrapper [data-testid="stPageLink"]:hover span,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover p,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover span {
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a:hover *,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover * {
         color: #ffffff !important;
     }
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"],
@@ -85,24 +126,30 @@ CYBER_DARK_CSS = """
         border-color: #6366f1 !important;
         box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
     }
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] p,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] span,
-    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] p,
-    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] span {
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] * {
         color: #ffffff !important;
         font-weight: 700 !important;
     }
 
-    /* Top navbar theme toggle button - Dark */
+    /* Top navbar fallback buttons & theme toggle button - Dark */
     .top-navbar-wrapper .stButton > button {
         background-color: #1f2937 !important;
         color: #f8fafc !important;
         border: 1px solid #374151 !important;
         font-weight: 600 !important;
+        border-radius: 6px !important;
+        font-size: 0.82rem !important;
+    }
+    .top-navbar-wrapper .stButton > button * {
+        color: #f8fafc !important;
     }
     .top-navbar-wrapper .stButton > button:hover {
         background-color: #312e81 !important;
         border-color: #6366f1 !important;
+        color: #ffffff !important;
+    }
+    .top-navbar-wrapper .stButton > button:hover * {
         color: #ffffff !important;
     }
 
@@ -267,12 +314,12 @@ CYBER_LIGHT_CSS = """
     
     /* Top navbar container styling - Light */
     .top-navbar-wrapper {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
     }
 
-    /* Top navbar page links/buttons styling - Light */
+    /* Top navbar page links styling - Light Mode */
     .top-navbar-wrapper [data-testid="stPageLink"],
     .top-navbar-wrapper [data-testid="stPageLink"] a,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] {
@@ -281,8 +328,14 @@ CYBER_LIGHT_CSS = """
         border-radius: 6px !important;
         font-size: 0.82rem !important;
         font-weight: 600 !important;
+        text-decoration: none !important;
         transition: all 0.15s ease-in-out !important;
     }
+    
+    /* Ensure all text, paragraphs, labels and spans inside navbar links are crisp dark #0f172a */
+    .top-navbar-wrapper [data-testid="stPageLink"] *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a *,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] *,
     .top-navbar-wrapper [data-testid="stPageLink"] p,
     .top-navbar-wrapper [data-testid="stPageLink"] span,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"] p,
@@ -290,42 +343,53 @@ CYBER_LIGHT_CSS = """
         color: #0f172a !important;
         font-weight: 600 !important;
     }
+
+    /* Top navbar link hover - Light Mode */
     .top-navbar-wrapper [data-testid="stPageLink"]:hover,
     .top-navbar-wrapper [data-testid="stPageLink"] a:hover,
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover {
         background-color: #e2e8f0 !important;
-        border-color: #6366f1 !important;
+        border-color: #4f46e5 !important;
     }
-    .top-navbar-wrapper [data-testid="stPageLink"]:hover p,
-    .top-navbar-wrapper [data-testid="stPageLink"]:hover span,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover p,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover span {
+    .top-navbar-wrapper [data-testid="stPageLink"]:hover *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a:hover *,
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"]:hover * {
         color: #4338ca !important;
     }
+
+    /* Active Page in Top Navbar - Light Mode */
     .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"],
     .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] {
         background-color: #4338ca !important;
         border-color: #3730a3 !important;
-        box-shadow: 0 0 8px rgba(67, 56, 202, 0.3) !important;
+        box-shadow: 0 0 8px rgba(67, 56, 202, 0.35) !important;
     }
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] p,
-    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] span,
-    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] p,
-    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] span {
+    .top-navbar-wrapper div[data-testid="stPageLink-NavLink"][aria-current="page"] *,
+    .top-navbar-wrapper [data-testid="stPageLink"] a[aria-current="page"] * {
         color: #ffffff !important;
         font-weight: 700 !important;
     }
 
-    /* Top navbar theme toggle button - Light */
+    /* Top navbar fallback buttons & Theme Toggle Button in Light Mode */
     .top-navbar-wrapper .stButton > button {
-        background-color: #f1f5f9 !important;
+        background-color: #ffffff !important;
         color: #0f172a !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #94a3b8 !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        font-size: 0.82rem !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    }
+    .top-navbar-wrapper .stButton > button * {
+        color: #0f172a !important;
         font-weight: 600 !important;
     }
     .top-navbar-wrapper .stButton > button:hover {
-        background-color: #e2e8f0 !important;
+        background-color: #f1f5f9 !important;
         border-color: #4f46e5 !important;
+        color: #4338ca !important;
+    }
+    .top-navbar-wrapper .stButton > button:hover * {
         color: #4338ca !important;
     }
 
@@ -477,17 +541,23 @@ CYBER_LIGHT_CSS = """
         font-weight: 700 !important;
     }
 
-    /* Buttons in Light Mode */
+    /* General Buttons in Light Mode */
     .stButton > button {
         border: 1px solid #cbd5e1 !important;
         color: #0f172a !important;
         background-color: #ffffff !important;
         font-weight: 600 !important;
     }
+    .stButton > button * {
+        color: #0f172a !important;
+    }
     .stButton > button:hover {
         border-color: #4f46e5 !important;
         color: #4338ca !important;
         background-color: #f1f5f9 !important;
+    }
+    .stButton > button:hover * {
+        color: #4338ca !important;
     }
     
     /* Primary buttons (e.g. Approve Action) in Light Mode */
@@ -498,10 +568,18 @@ CYBER_LIGHT_CSS = """
         color: #ffffff !important;
         font-weight: 700 !important;
     }
+    .stButton > button[kind="primary"] *,
+    .stButton > button[data-testid="baseButton-primary"] * {
+        color: #ffffff !important;
+    }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-testid="baseButton-primary"]:hover {
         background-color: #047857 !important;
         border-color: #065f46 !important;
+        color: #ffffff !important;
+    }
+    .stButton > button[kind="primary"]:hover *,
+    .stButton > button[data-testid="baseButton-primary"]:hover * {
         color: #ffffff !important;
     }
     
@@ -563,6 +641,7 @@ def render_top_navbar(active_page: str = "app.py"):
     Renders a sleek top horizontal navigation bar across all pages
     with navigation links and the Dark/Light theme switcher.
     """
+    st.markdown(CLIENT_URL_NORMALIZE_SCRIPT, unsafe_allow_html=True)
     st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
 
     theme = get_current_theme()

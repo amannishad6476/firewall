@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "AI Agent Firewall & Security Monitoring Platform",
   "scripts": {
-    "dev": "python -m streamlit run dashboard/app.py",
-    "dev:frontend": "python -m streamlit run dashboard/app.py",
+    "dev": "python run_dashboard.py",
+    "dev:frontend": "python run_dashboard.py",
     "dev:backend": "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
-    "start": "python -m streamlit run dashboard/app.py",
+    "start": "python run_dashboard.py",
     "test": "python -m pytest backend/tests/ -v -s",
     "demo": "python demo/run_demo.py"
   },
