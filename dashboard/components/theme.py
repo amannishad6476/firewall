@@ -1,47 +1,5 @@
 import streamlit as st
 
-# Client-side interceptor to prevent 404s on multipage subpath probes (e.g. /Approval_Center/_stcore/*)
-CLIENT_URL_NORMALIZE_SCRIPT = """
-<script>
-(function() {
-    if (window.__stcore_fetch_interceptor_installed) return;
-    window.__stcore_fetch_interceptor_installed = true;
-    
-    // Ensure BACKEND_BASE_URL is recognized as root
-    window.__streamlit = window.__streamlit || {};
-    if (!window.__streamlit.BACKEND_BASE_URL) {
-        window.__streamlit.BACKEND_BASE_URL = window.location.origin;
-    }
-
-    // Intercept fetch calls targeting relative subpaths of _stcore (e.g. /Approval_Center/_stcore/host-config)
-    const origFetch = window.fetch;
-    window.fetch = function(input, init) {
-        try {
-            if (typeof input === 'string') {
-                if (input.includes('/_stcore/host-config') && !input.startsWith('/_stcore/host-config')) {
-                    input = '/_stcore/host-config';
-                } else if (input.includes('/_stcore/health') && !input.startsWith('/_stcore/health')) {
-                    input = '/_stcore/health';
-                }
-            } else if (input && input.url) {
-                const u = new URL(input.url, window.location.href);
-                if (u.pathname.includes('/_stcore/host-config') && u.pathname !== '/_stcore/host-config') {
-                    u.pathname = '/_stcore/host-config';
-                    input = new Request(u.toString(), init || input);
-                } else if (u.pathname.includes('/_stcore/health') && u.pathname !== '/_stcore/health') {
-                    u.pathname = '/_stcore/health';
-                    input = new Request(u.toString(), init || input);
-                }
-            }
-        } catch (e) {
-            // Passthrough safely on error
-        }
-        return origFetch.call(this, input, init);
-    };
-})();
-</script>
-"""
-
 HIDE_SIDEBAR_CSS = """
 <style>
     /* Hide Streamlit default sidebar and sidebar navigation elements */
@@ -641,7 +599,6 @@ def render_top_navbar(active_page: str = "app.py"):
     Renders a sleek top horizontal navigation bar across all pages
     with navigation links and the Dark/Light theme switcher.
     """
-    st.markdown(CLIENT_URL_NORMALIZE_SCRIPT, unsafe_allow_html=True)
     st.markdown(HIDE_SIDEBAR_CSS, unsafe_allow_html=True)
 
     theme = get_current_theme()
