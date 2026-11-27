@@ -7,6 +7,9 @@
     "dev:frontend": "python run_dashboard.py",
     "dev:backend": "python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload",
     "start": "python run_dashboard.py",
+    "launch": "powershell -ExecutionPolicy Bypass -File .\\launch_all.ps1",
+    "stop": "powershell -ExecutionPolicy Bypass -File .\\stop_all.ps1",
+    "package:windows": "powershell -ExecutionPolicy Bypass -File .\\scripts\\package_windows.ps1",
     "test": "python -m pytest backend/tests/ -v -s",
     "demo": "python demo/run_demo.py"
   },

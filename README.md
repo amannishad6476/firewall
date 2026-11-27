@@ -138,6 +138,26 @@ ai-agent-firewall/
 
 ## 🚀 Quickstart & Execution
 
+### 🪟 Windows One-Click Launch (Recommended for Windows)
+
+- **Double-click `launch.bat`** in the root folder, or in PowerShell run:
+  ```powershell
+  # Start Backend + SOC Dashboard together
+  .\launch_all.ps1
+
+  # Run security attack demonstration
+  .\launch_all.ps1 -Mode Demo
+
+  # Gracefully stop all platform services
+  .\stop_all.ps1
+  ```
+- **Windows Packaging & Installer**:
+  ```powershell
+  # Build portable release ZIP and Inno Setup installer
+  .\scripts\package_windows.ps1
+  ```
+  *(See detailed guide in [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md) and Inno Setup script in `installer/AgentShield_Setup.iss`).*
+
 ### 1. Prerequisites & Environment Setup
 Python 3.10+ (tested on Python 3.14). Install dependencies:
 ```bash
